@@ -119,6 +119,322 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                                 </dd>
                             </div>
                         }
+                        if len(hw.Annotations) > 0 {
+                            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Annotations</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="flex flex-wrap gap-2">
+                                        for key, value := range hw.Annotations {
+                                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                                                {key}: {value}
+                                            </span>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
+                        if hw.Spec.TinkVersion != 0 {
+                            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Tink Version</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{fmt.Sprintf("%d", hw.Spec.TinkVersion)}</dd>
+                            </div>
+                        }
+                        if hw.Spec.UserData != nil && *hw.Spec.UserData != "" {
+                            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">User Data</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <pre class="whitespace-pre-wrap text-sm bg-gray-100 p-2 rounded">{*hw.Spec.UserData}</pre>
+                                </dd>
+                            </div>
+                        }
+                        if hw.Spec.VendorData != nil && *hw.Spec.VendorData != "" {
+                            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Vendor Data</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <pre class="whitespace-pre-wrap text-sm bg-gray-100 p-2 rounded">{*hw.Spec.VendorData}</pre>
+                                </dd>
+                            </div>
+                        }
+                        if len(hw.Spec.Interfaces) > 0 {
+                            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Network Interfaces</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="space-y-4">
+                                        for i, iface := range hw.Spec.Interfaces {
+                                            <div class="border border-gray-200 rounded-lg p-3">
+                                                <h4 class="text-sm font-medium text-gray-900 mb-2">Interface {fmt.Sprintf("%d", i+1)}</h4>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                                    if iface.DHCP != nil {
+                                                        if iface.DHCP.MAC != "" {
+                                                            <div><span class="font-medium">MAC:</span> {iface.DHCP.MAC}</div>
+                                                        }
+                                                        if iface.DHCP.Hostname != "" {
+                                                            <div><span class="font-medium">Hostname:</span> {iface.DHCP.Hostname}</div>
+                                                        }
+                                                        if iface.DHCP.IP != nil && iface.DHCP.IP.Address != "" {
+                                                            <div><span class="font-medium">IP:</span> {iface.DHCP.IP.Address}</div>
+                                                        }
+                                                        if iface.DHCP.IP != nil && iface.DHCP.IP.Netmask != "" {
+                                                            <div><span class="font-medium">Netmask:</span> {iface.DHCP.IP.Netmask}</div>
+                                                        }
+                                                        if iface.DHCP.IP != nil && iface.DHCP.IP.Gateway != "" {
+                                                            <div><span class="font-medium">Gateway:</span> {iface.DHCP.IP.Gateway}</div>
+                                                        }
+                                                        if iface.DHCP.Arch != "" {
+                                                            <div><span class="font-medium">Architecture:</span> {iface.DHCP.Arch}</div>
+                                                        }
+                                                        if iface.DHCP.VLANID != "" {
+                                                            <div><span class="font-medium">VLAN ID:</span> {iface.DHCP.VLANID}</div>
+                                                        }
+                                                    }
+                                                    if iface.Netboot != nil {
+                                                        if iface.Netboot.AllowPXE != nil {
+                                                            <div><span class="font-medium">Allow PXE:</span> {fmt.Sprintf("%t", *iface.Netboot.AllowPXE)}</div>
+                                                        }
+                                                        if iface.Netboot.AllowWorkflow != nil {
+                                                            <div><span class="font-medium">Allow Workflow:</span> {fmt.Sprintf("%t", *iface.Netboot.AllowWorkflow)}</div>
+                                                        }
+                                                        if iface.Netboot.IPXE != nil && iface.Netboot.IPXE.URL != "" {
+                                                            <div><span class="font-medium">iPXE URL:</span> {iface.Netboot.IPXE.URL}</div>
+                                                        }
+                                                        if iface.Netboot.OSIE != nil && iface.Netboot.OSIE.BaseURL != "" {
+                                                            <div><span class="font-medium">OSIE Base URL:</span> {iface.Netboot.OSIE.BaseURL}</div>
+                                                        }
+                                                    }
+                                                    <div><span class="font-medium">DHCP Disabled:</span> {fmt.Sprintf("%t", iface.DisableDHCP)}</div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
+                        if len(hw.Spec.Disks) > 0 {
+                            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Disks</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="space-y-2">
+                                        for i, disk := range hw.Spec.Disks {
+                                            <div class="border border-gray-200 rounded-lg p-3">
+                                                <div class="text-sm font-medium text-gray-900">Disk {fmt.Sprintf("%d", i+1)}</div>
+                                                if disk.Device != "" {
+                                                    <div class="text-sm text-gray-600">Device: {disk.Device}</div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
+                        if len(hw.Spec.Resources) > 0 {
+                            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Resources</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="space-y-2">
+                                        for key, quantity := range hw.Spec.Resources {
+                                            <div class="flex justify-between items-center border border-gray-200 rounded-lg p-2">
+                                                <span class="font-medium">{key}</span>
+                                                <span class="text-gray-600">{quantity.String()}</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
+                        if len(hw.Spec.References) > 0 {
+                            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">References</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="space-y-3">
+                                        for key, ref := range hw.Spec.References {
+                                            <div class="border border-gray-200 rounded-lg p-3">
+                                                <div class="text-sm font-medium text-gray-900 mb-2">Reference: {key}</div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                    if ref.Name != "" {
+                                                        <div><span class="font-medium">Name:</span> {ref.Name}</div>
+                                                    }
+                                                    if ref.Namespace != "" {
+                                                        <div><span class="font-medium">Namespace:</span> {ref.Namespace}</div>
+                                                    }
+                                                    if ref.Group != "" {
+                                                        <div><span class="font-medium">Group:</span> {ref.Group}</div>
+                                                    }
+                                                    if ref.Version != "" {
+                                                        <div><span class="font-medium">Version:</span> {ref.Version}</div>
+                                                    }
+                                                    if ref.Resource != "" {
+                                                        <div><span class="font-medium">Resource:</span> {ref.Resource}</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
+                        if hw.Spec.Metadata != nil {
+                            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <dt class="text-sm font-medium text-gray-500">Hardware Metadata</dt>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div class="space-y-4">
+                                        if hw.Spec.Metadata.State != "" {
+                                            <div><span class="font-medium">State:</span> {hw.Spec.Metadata.State}</div>
+                                        }
+                                        if hw.Spec.Metadata.BondingMode != 0 {
+                                            <div><span class="font-medium">Bonding Mode:</span> {fmt.Sprintf("%d", hw.Spec.Metadata.BondingMode)}</div>
+                                        }
+                                        if hw.Spec.Metadata.Manufacturer != nil {
+                                            <div class="border border-gray-200 rounded-lg p-3 mt-2">
+                                                <div class="text-sm font-medium text-gray-900 mb-2">Manufacturer</div>
+                                                if hw.Spec.Metadata.Manufacturer.ID != "" {
+                                                    <div><span class="font-medium">ID:</span> {hw.Spec.Metadata.Manufacturer.ID}</div>
+                                                }
+                                                if hw.Spec.Metadata.Manufacturer.Slug != "" {
+                                                    <div><span class="font-medium">Slug:</span> {hw.Spec.Metadata.Manufacturer.Slug}</div>
+                                                }
+                                            </div>
+                                        }
+                                        if hw.Spec.Metadata.Instance != nil {
+                                            <div class="border border-gray-200 rounded-lg p-3 mt-2">
+                                                <div class="text-sm font-medium text-gray-900 mb-2">Instance</div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                    if hw.Spec.Metadata.Instance.ID != "" {
+                                                        <div><span class="font-medium">ID:</span> {hw.Spec.Metadata.Instance.ID}</div>
+                                                    }
+                                                    if hw.Spec.Metadata.Instance.State != "" {
+                                                        <div><span class="font-medium">State:</span> {hw.Spec.Metadata.Instance.State}</div>
+                                                    }
+                                                    if hw.Spec.Metadata.Instance.Hostname != "" {
+                                                        <div><span class="font-medium">Hostname:</span> {hw.Spec.Metadata.Instance.Hostname}</div>
+                                                    }
+                                                    <div><span class="font-medium">Allow PXE:</span> {fmt.Sprintf("%t", hw.Spec.Metadata.Instance.AllowPxe)}</div>
+                                                    <div><span class="font-medium">Rescue:</span> {fmt.Sprintf("%t", hw.Spec.Metadata.Instance.Rescue)}</div>
+                                                    <div><span class="font-medium">Always PXE:</span> {fmt.Sprintf("%t", hw.Spec.Metadata.Instance.AlwaysPxe)}</div>
+                                                    <div><span class="font-medium">Network Ready:</span> {fmt.Sprintf("%t", hw.Spec.Metadata.Instance.NetworkReady)}</div>
+                                                    if hw.Spec.Metadata.Instance.IpxeScriptURL != "" {
+                                                        <div><span class="font-medium">iPXE Script URL:</span> {hw.Spec.Metadata.Instance.IpxeScriptURL}</div>
+                                                    }
+                                                    if hw.Spec.Metadata.Instance.Userdata != "" {
+                                                        <div class="col-span-2"><span class="font-medium">Userdata:</span>
+                                                            <pre class="whitespace-pre-wrap text-xs bg-gray-100 p-2 rounded mt-1">{hw.Spec.Metadata.Instance.Userdata}</pre>
+                                                        </div>
+                                                    }
+                                                    if hw.Spec.Metadata.Instance.CryptedRootPassword != "" {
+                                                        <div><span class="font-medium">Crypted Root Password:</span> ••••••••</div>
+                                                    }
+                                                    if len(hw.Spec.Metadata.Instance.Tags) > 0 {
+                                                        <div class="col-span-2"><span class="font-medium">Tags:</span>
+                                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                                for _, tag := range hw.Spec.Metadata.Instance.Tags {
+                                                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">{tag}</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    if len(hw.Spec.Metadata.Instance.SSHKeys) > 0 {
+                                                        <div class="col-span-2"><span class="font-medium">SSH Keys:</span>
+                                                            <div class="space-y-1 mt-1">
+                                                                for _, key := range hw.Spec.Metadata.Instance.SSHKeys {
+                                                                    <div class="text-xs bg-gray-100 p-2 rounded font-mono">{key}</div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    if len(hw.Spec.Metadata.Instance.Ips) > 0 {
+                                                        <div class="col-span-2"><span class="font-medium">IP Addresses:</span>
+                                                            <div class="space-y-2 mt-1">
+                                                                for _, ip := range hw.Spec.Metadata.Instance.Ips {
+                                                                    <div class="border border-gray-100 rounded p-2 text-xs">
+                                                                        if ip.Address != "" {
+                                                                            <div><span class="font-medium">Address:</span> {ip.Address}</div>
+                                                                        }
+                                                                        if ip.Netmask != "" {
+                                                                            <div><span class="font-medium">Netmask:</span> {ip.Netmask}</div>
+                                                                        }
+                                                                        if ip.Gateway != "" {
+                                                                            <div><span class="font-medium">Gateway:</span> {ip.Gateway}</div>
+                                                                        }
+                                                                        if ip.Family != 0 {
+                                                                            <div><span class="font-medium">Family:</span> {fmt.Sprintf("%d", ip.Family)}</div>
+                                                                        }
+                                                                        <div><span class="font-medium">Public:</span> {fmt.Sprintf("%t", ip.Public)}</div>
+                                                                        <div><span class="font-medium">Management:</span> {fmt.Sprintf("%t", ip.Management)}</div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    if hw.Spec.Metadata.Instance.OperatingSystem != nil {
+                                                        <div class="col-span-2">
+                                                            <span class="font-medium">Operating System:</span>
+                                                            <div class="grid grid-cols-2 gap-2 mt-1 text-xs">
+                                                                if hw.Spec.Metadata.Instance.OperatingSystem.Slug != "" {
+                                                                    <div><span class="font-medium">Slug:</span> {hw.Spec.Metadata.Instance.OperatingSystem.Slug}</div>
+                                                                }
+                                                                if hw.Spec.Metadata.Instance.OperatingSystem.Distro != "" {
+                                                                    <div><span class="font-medium">Distro:</span> {hw.Spec.Metadata.Instance.OperatingSystem.Distro}</div>
+                                                                }
+                                                                if hw.Spec.Metadata.Instance.OperatingSystem.Version != "" {
+                                                                    <div><span class="font-medium">Version:</span> {hw.Spec.Metadata.Instance.OperatingSystem.Version}</div>
+                                                                }
+                                                                if hw.Spec.Metadata.Instance.OperatingSystem.ImageTag != "" {
+                                                                    <div><span class="font-medium">Image Tag:</span> {hw.Spec.Metadata.Instance.OperatingSystem.ImageTag}</div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        if hw.Spec.Metadata.Facility != nil {
+                                            <div class="border border-gray-200 rounded-lg p-3 mt-2">
+                                                <div class="text-sm font-medium text-gray-900 mb-2">Facility</div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                    if hw.Spec.Metadata.Facility.PlanSlug != "" {
+                                                        <div><span class="font-medium">Plan Slug:</span> {hw.Spec.Metadata.Facility.PlanSlug}</div>
+                                                    }
+                                                    if hw.Spec.Metadata.Facility.PlanVersionSlug != "" {
+                                                        <div><span class="font-medium">Plan Version Slug:</span> {hw.Spec.Metadata.Facility.PlanVersionSlug}</div>
+                                                    }
+                                                    if hw.Spec.Metadata.Facility.FacilityCode != "" {
+                                                        <div><span class="font-medium">Facility Code:</span> {hw.Spec.Metadata.Facility.FacilityCode}</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        if hw.Spec.Metadata.Custom != nil {
+                                            <div class="border border-gray-200 rounded-lg p-3 mt-2">
+                                                <div class="text-sm font-medium text-gray-900 mb-2">Custom Metadata</div>
+                                                if len(hw.Spec.Metadata.Custom.PrivateSubnets) > 0 {
+                                                    <div><span class="font-medium">Private Subnets:</span>
+                                                        <div class="flex flex-wrap gap-1 mt-1">
+                                                            for _, subnet := range hw.Spec.Metadata.Custom.PrivateSubnets {
+                                                                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">{subnet}</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                                if hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion != nil {
+                                                    <div class="mt-2"><span class="font-medium">Preinstalled OS:</span>
+                                                        <div class="grid grid-cols-2 gap-2 mt-1 text-xs">
+                                                            if hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Slug != "" {
+                                                                <div><span class="font-medium">Slug:</span> {hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Slug}</div>
+                                                            }
+                                                            if hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Distro != "" {
+                                                                <div><span class="font-medium">Distro:</span> {hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Distro}</div>
+                                                            }
+                                                            if hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Version != "" {
+                                                                <div><span class="font-medium">Version:</span> {hw.Spec.Metadata.Custom.PreinstalledOperatingSystemVersion.Version}</div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </dd>
+                            </div>
+                        }
                     </dl>
                 </div>
             </div>
@@ -127,8 +443,8 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
 
     <!-- Edit Modal -->
     <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center p-6 border-b">
+        <div class="bg-white rounded-lg w-[95vw] h-[95vh] mx-4 flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b flex-shrink-0">
                 <h3 class="text-lg font-medium text-gray-900">Edit Hardware</h3>
                 <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" class="text-gray-400 hover:text-gray-600">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,7 +453,8 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                 </button>
             </div>
             
-            <form hx-put={"/hardware/" + hw.Name} hx-target="body" hx-swap="outerHTML" class="p-6 space-y-6">
+            <div class="flex-1 overflow-y-auto p-6">
+                <form hx-put={"/hardware/" + hw.Name} hx-target="body" hx-swap="outerHTML" class="space-y-6">
                 <!-- Basic Information Section -->
                 <div class="border border-gray-200 rounded-lg p-4">
                     <h4 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
@@ -337,6 +654,7 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                     </button>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 

@@ -102,6 +102,7 @@ body {
 .flex-1 { flex: 1 1 0%; }
 .flex-shrink-0 { flex-shrink: 0; }
 .flex-wrap { flex-wrap: wrap; }
+.flex-col { flex-direction: column; }
 
 /* Grid */
 .grid { display: grid; }
@@ -209,6 +210,41 @@ a:hover {
 .w-0 { width: 0; }
 .w-full { width: 100%; }
 
+/* Modal height utilities */
+.max-h-\[90vh\] { max-height: 90vh; }
+.max-h-screen { max-height: 100vh; }
+
+/* Modal sizing utilities for viewport-based dimensions */
+.w-\[95vw\] { width: 95vw; }
+.h-\[95vh\] { height: 95vh; }
+.w-\[90vw\] { width: 90vw; }
+.h-\[90vh\] { height: 90vh; }
+.w-\[80vw\] { width: 80vw; }
+.h-\[80vh\] { height: 80vh; }
+
+/* Z-index utilities */
+.z-50 { z-index: 50; }
+
+/* Additional spacing utilities */
+.space-y-6 > * + * { margin-top: 1.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+
+/* Ensure modal scrolling works properly */
+.flex-1 {
+  min-height: 0; /* Important for flex children to be able to shrink */
+}
+
+/* Modal specific scrolling fixes */
+#edit-modal .flex-1 {
+  overflow-y: scroll !important; /* Force scrolling to be visible */
+  max-height: calc(95vh - 120px); /* Account for header and padding */
+}
+
+/* Force minimum content height to ensure scrolling is testable */
+.space-y-6 {
+  min-height: 100vh; /* Force content to be taller than viewport */
+}
+
 /* Responsive */
 @media (min-width: 640px) {
   .sm\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -225,6 +261,9 @@ a:hover {
 }
 
 @media (min-width: 768px) {
+  .md\:grid-cols-2 { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
+  }
   .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
@@ -254,7 +293,3 @@ a:hover {
 
 /* Modal background */
 .bg-opacity-50 { --tw-bg-opacity: 0.5; }
-
-/* Modal height utilities */
-.max-h-\[90vh\] { max-height: 90vh; }
-.max-h-screen { max-height: 100vh; }
