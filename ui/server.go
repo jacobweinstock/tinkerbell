@@ -612,7 +612,7 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 	// Update References
 	hw.Spec.References = make(map[string]tinkerbell.Reference)
 	processedRefs := make(map[string]bool)
-	
+
 	for key := range r.Form {
 		if strings.HasPrefix(key, "references[") && strings.Contains(key, "]") {
 			// Extract reference name from key like "references[refName].field"
@@ -620,10 +620,10 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 			end := strings.Index(key, "]")
 			if start > 0 && end > start {
 				refName := key[start:end]
-				
+
 				if !processedRefs[refName] {
 					ref := tinkerbell.Reference{}
-					
+
 					// Get all fields for this reference
 					if nameValues, ok := r.Form[fmt.Sprintf("references[%s].name", refName)]; ok && len(nameValues) > 0 {
 						actualRefName := nameValues[0]
@@ -631,7 +631,7 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 							refName = actualRefName
 						}
 					}
-					
+
 					if objNames, ok := r.Form[fmt.Sprintf("references[%s].objectName", refName)]; ok && len(objNames) > 0 {
 						ref.Name = objNames[0]
 					}
@@ -647,7 +647,7 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 					if resources, ok := r.Form[fmt.Sprintf("references[%s].resource", refName)]; ok && len(resources) > 0 {
 						ref.Resource = resources[0]
 					}
-					
+
 					if ref.Name != "" || ref.Namespace != "" || ref.Group != "" || ref.Version != "" || ref.Resource != "" {
 						hw.Spec.References[refName] = ref
 					}
@@ -662,18 +662,18 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 		if hw.Spec.Metadata == nil {
 			hw.Spec.Metadata = &tinkerbell.HardwareMetadata{}
 		}
-		
+
 		// Basic metadata fields
 		if state := r.FormValue("metadata.state"); state != "" {
 			hw.Spec.Metadata.State = state
 		}
-		
+
 		if bondingModeStr := r.FormValue("metadata.bondingMode"); bondingModeStr != "" {
 			if bondingMode, err := strconv.ParseInt(bondingModeStr, 10, 64); err == nil {
 				hw.Spec.Metadata.BondingMode = bondingMode
 			}
 		}
-		
+
 		// Manufacturer metadata
 		manufacturerID := r.FormValue("metadata.manufacturer.id")
 		manufacturerSlug := r.FormValue("metadata.manufacturer.slug")
@@ -688,7 +688,7 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 				hw.Spec.Metadata.Manufacturer.Slug = manufacturerSlug
 			}
 		}
-		
+
 		// Instance metadata
 		instanceID := r.FormValue("metadata.instance.id")
 		instanceState := r.FormValue("metadata.instance.state")
@@ -700,10 +700,10 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 		instanceRescue := r.FormValue("metadata.instance.rescue") == "true"
 		instanceAlwaysPxe := r.FormValue("metadata.instance.alwaysPxe") == "true"
 		instanceNetworkReady := r.FormValue("metadata.instance.networkReady") == "true"
-		
-		if instanceID != "" || instanceState != "" || instanceHostname != "" || instanceIpxeURL != "" || 
-		   instanceUserdata != "" || instancePassword != "" || instanceAllowPxe || instanceRescue || 
-		   instanceAlwaysPxe || instanceNetworkReady {
+
+		if instanceID != "" || instanceState != "" || instanceHostname != "" || instanceIpxeURL != "" ||
+			instanceUserdata != "" || instancePassword != "" || instanceAllowPxe || instanceRescue ||
+			instanceAlwaysPxe || instanceNetworkReady {
 			if hw.Spec.Metadata.Instance == nil {
 				hw.Spec.Metadata.Instance = &tinkerbell.MetadataInstance{}
 			}
@@ -730,14 +730,14 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 			hw.Spec.Metadata.Instance.AlwaysPxe = instanceAlwaysPxe
 			hw.Spec.Metadata.Instance.NetworkReady = instanceNetworkReady
 		}
-		
+
 		// Operating System metadata
 		osSlug := r.FormValue("metadata.instance.operatingSystem.slug")
 		osDistro := r.FormValue("metadata.instance.operatingSystem.distro")
 		osVersion := r.FormValue("metadata.instance.operatingSystem.version")
 		osImageTag := r.FormValue("metadata.instance.operatingSystem.imageTag")
 		osOsSlug := r.FormValue("metadata.instance.operatingSystem.osSlug")
-		
+
 		if osSlug != "" || osDistro != "" || osVersion != "" || osImageTag != "" || osOsSlug != "" {
 			if hw.Spec.Metadata.Instance == nil {
 				hw.Spec.Metadata.Instance = &tinkerbell.MetadataInstance{}
@@ -761,12 +761,12 @@ func updateHardwareFromForm(hw *tinkerbell.Hardware, r *http.Request) error {
 				hw.Spec.Metadata.Instance.OperatingSystem.OsSlug = osOsSlug
 			}
 		}
-		
+
 		// Facility metadata
 		facilityPlanSlug := r.FormValue("metadata.facility.planSlug")
 		facilityPlanVersionSlug := r.FormValue("metadata.facility.planVersionSlug")
 		facilityCode := r.FormValue("metadata.facility.facilityCode")
-		
+
 		if facilityPlanSlug != "" || facilityPlanVersionSlug != "" || facilityCode != "" {
 			if hw.Spec.Metadata.Facility == nil {
 				hw.Spec.Metadata.Facility = &tinkerbell.MetadataFacility{}
@@ -909,7 +909,7 @@ func hasAnyMetadataField(r *http.Request) bool {
 		"metadata.instance.operatingSystem.osSlug",
 		"metadata.facility.planSlug", "metadata.facility.planVersionSlug", "metadata.facility.facilityCode",
 	}
-	
+
 	for _, field := range metadataFields {
 		if r.FormValue(field) != "" {
 			return true
@@ -925,7 +925,7 @@ func hasAnyInterfaceField(r *http.Request, index int) bool {
 		"dhcp.leaseTime", "dhcp.vlanID", "dhcp.uefi", "netboot.allowPXE", "netboot.allowWorkflow",
 		"netboot.ipxe.url", "disableDHCP",
 	}
-	
+
 	for _, field := range fields {
 		if r.FormValue(fmt.Sprintf("interfaces[%d].%s", index, field)) != "" {
 			return true
