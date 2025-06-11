@@ -1,0 +1,138 @@
+package ui
+
+import "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+
+templ WorkflowPage(workflowList []tinkerbell.Workflow) {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tinkerbell UI - Workflows</title>
+    <link href="/static/simple.css" rel="stylesheet">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">Tinkerbell</h1>
+                    <div class="ml-6 flex space-x-8">
+                        <a href="/hardware" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Hardware</a>
+                        <a href="/templates" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Templates</a>
+                        <a href="/workflows" class="border-blue-500 text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Workflows</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-900">Workflows</h1>
+                <button 
+                    type="button"
+                    onclick="document.getElementById('create-modal').style.display='block'"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Create Workflow
+                </button>
+            </div>
+
+            <!-- Workflows table -->
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul class="divide-y divide-gray-200">
+                    if len(workflowList) == 0 {
+                        <li class="px-6 py-4 text-center text-gray-500">
+                            No workflows found. Create your first workflow.
+                        </li>
+                    }
+                    for _, wf := range workflowList {
+                        <li>
+                            <a href={templ.URL("/workflows/" + wf.Name)} class="block hover:bg-gray-50">
+                                <div class="px-4 py-4 sm:px-6">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-purple-300 flex items-center justify-center">
+                                                    <svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">{wf.Name}</div>
+                                                <div class="text-sm text-gray-500">
+                                                    if wf.Spec.TemplateRef != "" {
+                                                        Template: {wf.Spec.TemplateRef}
+                                                    } else {
+                                                        No template assigned
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            if wf.Status.State == tinkerbell.WorkflowStateSuccess {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                                            } else if wf.Status.State == tinkerbell.WorkflowStateFailed {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Failed</span>
+                                            } else if wf.Status.State == tinkerbell.WorkflowStateRunning {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Running</span>
+                                            } else if wf.Status.State == tinkerbell.WorkflowStatePending {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+                                            } else if wf.Status.State == tinkerbell.WorkflowStateTimeout {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Timeout</span>
+                                            } else {
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Unknown</span>
+                                            }
+                                            <svg class="ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Workflow Modal -->
+    <div id="create-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Create Workflow</h3>
+                <button type="button" onclick="document.getElementById('create-modal').style.display='none'" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form hx-post="/workflows" hx-target="body" hx-swap="outerHTML">
+                <div class="mb-4">
+                    <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" name="name" id="name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="template-ref" class="block text-sm font-medium text-gray-700">Template Reference</label>
+                    <input type="text" name="template-ref" id="template-ref" placeholder="template-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="hardware-ref" class="block text-sm font-medium text-gray-700">Hardware Reference</label>
+                    <input type="text" name="hardware-ref" id="hardware-ref" placeholder="hardware-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('create-modal').style.display='none'" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+}

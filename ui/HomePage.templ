@@ -1,0 +1,106 @@
+package ui
+
+templ HomePage() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tinkerbell UI</title>
+    <link href="/static/simple.css" rel="stylesheet">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">Tinkerbell</h1>
+                    <div class="ml-6 flex space-x-8">
+                        <a href="/hardware" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Hardware</a>
+                        <a href="/templates" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Templates</a>
+                        <a href="/workflows" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Workflows</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold text-gray-900 mb-6">Welcome to Tinkerbell</h1>
+                <p class="text-xl text-gray-600 mb-8">Manage your bare metal infrastructure with ease</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Hardware Card -->
+                    <a href="/hardware" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow">
+                        <div class="px-4 py-5 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <div class="h-12 w-12 rounded-md bg-blue-500 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Hardware</dt>
+                                        <dd class="text-lg font-medium text-gray-900">Manage bare metal servers</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Templates Card -->
+                    <a href="/templates" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow">
+                        <div class="px-4 py-5 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <div class="h-12 w-12 rounded-md bg-green-500 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Templates</dt>
+                                        <dd class="text-lg font-medium text-gray-900">Define workflow templates</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Workflows Card -->
+                    <a href="/workflows" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow">
+                        <div class="px-4 py-5 sm:p-6">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    <div class="h-12 w-12 rounded-md bg-purple-500 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="ml-5 w-0 flex-1">
+                                    <dl>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">Workflows</dt>
+                                        <dd class="text-lg font-medium text-gray-900">Execute provisioning workflows</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+}
