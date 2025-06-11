@@ -179,7 +179,7 @@ func TemplateDetailPage(tmpl tinkerbell.Template) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><!-- Edit Modal --><div id=\"edit-modal\" class=\"fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center\"><div class=\"bg-white rounded-lg p-6 max-w-2xl w-full mx-4\"><div class=\"flex justify-between items-center mb-4\"><h3 class=\"text-lg font-medium text-gray-900\">Edit Template</h3><button type=\"button\" onclick=\"document.getElementById('edit-modal').style.display='none'\" class=\"text-gray-400 hover:text-gray-600\"><svg class=\"h-6 w-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><form hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><!-- Edit Modal --><div id=\"edit-modal\" class=\"fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center\"><div class=\"bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto\"><div class=\"flex justify-between items-center mb-4\"><h3 class=\"text-lg font-medium text-gray-900\">Edit Template</h3><button type=\"button\" onclick=\"document.getElementById('edit-modal').style.display='none'\" class=\"text-gray-400 hover:text-gray-600\"><svg class=\"h-6 w-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><form hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

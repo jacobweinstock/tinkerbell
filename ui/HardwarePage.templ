@@ -98,7 +98,7 @@ templ HardwarePage(hardwareList []tinkerbell.Hardware) {
 
     <!-- Create Hardware Modal -->
     <div id="create-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-medium text-gray-900">Create Hardware</h3>
                 <button type="button" onclick="document.getElementById('create-modal').style.display='none'" class="text-gray-400 hover:text-gray-600">

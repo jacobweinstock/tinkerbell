@@ -198,6 +198,7 @@ a:hover {
 .fixed { position: fixed; }
 .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
 .overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
 .whitespace-pre-wrap { white-space: pre-wrap; }
 .overflow-x-auto { overflow-x: auto; }
 .space-x-3 > * + * { margin-left: 0.75rem; }
@@ -253,3 +254,7 @@ a:hover {
 
 /* Modal background */
 .bg-opacity-50 { --tw-bg-opacity: 0.5; }
+
+/* Modal height utilities */
+.max-h-\[90vh\] { max-height: 90vh; }
+.max-h-screen { max-height: 100vh; }
