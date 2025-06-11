@@ -515,10 +515,10 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                         for i, _ := range hw.Spec.Interfaces {
                             <div class="border border-gray-100 rounded p-3 mb-3">
                                 <h5 class="text-sm font-medium text-gray-800 mb-2">Interface {fmt.Sprintf("%d", i+1)}</h5>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Netboot Enabled</label>
-                                        <input type="checkbox" name={fmt.Sprintf("interfaces[%d].netboot", i)} class="mt-1">
+                                        <label class="block text-sm font-medium text-gray-700">Disable DHCP</label>
+                                        <input type="checkbox" name={fmt.Sprintf("interfaces[%d].disableDhcp", i)} class="mt-1"/>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP MAC</label>
@@ -531,8 +531,18 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">DHCP IP</label>
-                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip", i)} 
+                                        <label class="block text-sm font-medium text-gray-700">DHCP IP Address</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.address", i)} 
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">DHCP Netmask</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.netmask", i)} 
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">DHCP Gateway</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.gateway", i)} 
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                 </div>
@@ -638,6 +648,161 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                             <label for="edit-plan-slug" class="block text-sm font-medium text-gray-700">Plan Slug</label>
                             <input type="text" name="planSlug" id="edit-plan-slug" 
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Labels Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Labels</h4>
+                    <div class="space-y-3">
+                        if len(hw.Labels) > 0 {
+                            for key, value := range hw.Labels {
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Label Key</label>
+                                        <input type="text" name="labelKeys[]" value={key}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Label Value</label>
+                                        <input type="text" name="labelValues[]" value={value}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            }
+                        } else {
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Label Key</label>
+                                    <input type="text" name="labelKeys[]" 
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Enter label key">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Label Value</label>
+                                    <input type="text" name="labelValues[]" 
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Enter label value">
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Annotations Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Annotations</h4>
+                    <div class="space-y-3">
+                        if len(hw.Annotations) > 0 {
+                            for key, value := range hw.Annotations {
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Annotation Key</label>
+                                        <input type="text" name="annotationKeys[]" value={key}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Annotation Value</label>
+                                        <input type="text" name="annotationValues[]" value={value}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            }
+                        } else {
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Annotation Key</label>
+                                    <input type="text" name="annotationKeys[]" 
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Enter annotation key">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Annotation Value</label>
+                                    <input type="text" name="annotationValues[]" 
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Enter annotation value">
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Instance Metadata Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Instance Metadata</h4>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit-instance-userdata" class="block text-sm font-medium text-gray-700">Instance User Data</label>
+                                <textarea name="instance.userdata" id="edit-instance-userdata" rows="4" 
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    placeholder="Enter instance user data...">
+                                    if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.Userdata != "" {
+                                        {hw.Spec.Metadata.Instance.Userdata}
+                                    }
+                                </textarea>
+                            </div>
+                            <div>
+                                <label for="edit-instance-crypted-root-password" class="block text-sm font-medium text-gray-700">Crypted Root Password</label>
+                                <input type="password" name="instance.cryptedRootPassword" id="edit-instance-crypted-root-password" 
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    placeholder="Enter crypted root password">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit-instance-ssh-keys" class="block text-sm font-medium text-gray-700">SSH Keys (one per line)</label>
+                                <textarea name="instance.sshKeys" id="edit-instance-ssh-keys" rows="4" 
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono text-xs"
+                                    placeholder="Enter SSH public keys, one per line...">
+                                    if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && len(hw.Spec.Metadata.Instance.SSHKeys) > 0 {
+                                        for i, key := range hw.Spec.Metadata.Instance.SSHKeys {
+                                            {key}
+                                            if i < len(hw.Spec.Metadata.Instance.SSHKeys)-1 {
+                                                
+                                            }
+                                        }
+                                    }
+                                </textarea>
+                            </div>
+                            <div>
+                                <label for="edit-instance-tags" class="block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
+                                <input type="text" name="instance.tags" id="edit-instance-tags" 
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    placeholder="Enter tags separated by commas">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Operating System Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Operating System</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label for="edit-os-slug" class="block text-sm font-medium text-gray-700">OS Slug</label>
+                            <input type="text" name="os.slug" id="edit-os-slug" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="e.g., ubuntu_20_04">
+                        </div>
+                        <div>
+                            <label for="edit-os-distro" class="block text-sm font-medium text-gray-700">Distribution</label>
+                            <input type="text" name="os.distro" id="edit-os-distro" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="e.g., ubuntu">
+                        </div>
+                        <div>
+                            <label for="edit-os-version" class="block text-sm font-medium text-gray-700">Version</label>
+                            <input type="text" name="os.version" id="edit-os-version" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="e.g., 20.04">
+                        </div>
+                        <div>
+                            <label for="edit-os-image-tag" class="block text-sm font-medium text-gray-700">Image Tag</label>
+                            <input type="text" name="os.imageTag" id="edit-os-image-tag" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="e.g., latest">
                         </div>
                     </div>
                 </div>
