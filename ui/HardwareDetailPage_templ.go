@@ -1535,384 +1535,769 @@ func HardwareDetailPage(hw tinkerbell.Hardware) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div><div class=\"grid grid-cols-1 gap-4 mt-4\"><div><label for=\"edit-user-data\" class=\"block text-sm font-medium text-gray-700\">User Data</label> <textarea name=\"userData\" id=\"edit-user-data\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter user data...\"></textarea></div><div><label for=\"edit-vendor-data\" class=\"block text-sm font-medium text-gray-700\">Vendor Data</label> <textarea name=\"vendorData\" id=\"edit-vendor-data\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter vendor data...\"></textarea></div></div></div><!-- BMC Reference Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">BMC Reference</h4><div class=\"grid grid-cols-1 md:grid-cols-3 gap-4\"><div><label for=\"edit-bmc-name\" class=\"block text-sm font-medium text-gray-700\">BMC Name</label> <input type=\"text\" name=\"bmcName\" id=\"edit-bmc-name\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-bmc-kind\" class=\"block text-sm font-medium text-gray-700\">BMC Kind</label> <input type=\"text\" name=\"bmcKind\" id=\"edit-bmc-kind\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-bmc-apigroup\" class=\"block text-sm font-medium text-gray-700\">BMC API Group</label> <input type=\"text\" name=\"bmcAPIGroup\" id=\"edit-bmc-apigroup\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div><!-- Network Interfaces Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Network Interfaces</h4><div id=\"interfaces-container\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div><div class=\"grid grid-cols-1 gap-4 mt-4\"><div><label for=\"edit-user-data\" class=\"block text-sm font-medium text-gray-700\">User Data</label> <textarea name=\"userData\" id=\"edit-user-data\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter user data...\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for i, _ := range hw.Spec.Interfaces {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "<div class=\"border border-gray-100 rounded p-3 mb-3\"><h5 class=\"text-sm font-medium text-gray-800 mb-2\">Interface ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		if hw.Spec.UserData != nil {
 			var templ_7745c5c3_Var72 string
-			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", i+1))
+			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(*hw.Spec.UserData)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 517, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 480, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "</h5><div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Disable DHCP</label> <input type=\"checkbox\" name=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "</textarea></div><div><label for=\"edit-vendor-data\" class=\"block text-sm font-medium text-gray-700\">Vendor Data</label> <textarea name=\"vendorData\" id=\"edit-vendor-data\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter vendor data...\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.VendorData != nil {
 			var templ_7745c5c3_Var73 string
-			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].disableDhcp", i))
+			templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(*hw.Spec.VendorData)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 521, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 490, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "\" class=\"mt-1\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP MAC</label> <input type=\"text\" name=\"")
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "</textarea></div></div></div><!-- BMC Reference Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">BMC Reference</h4><div class=\"grid grid-cols-1 md:grid-cols-3 gap-4\"><div><label for=\"edit-bmc-name\" class=\"block text-sm font-medium text-gray-700\">BMC Name</label> <input type=\"text\" name=\"bmcName\" id=\"edit-bmc-name\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.BMCRef != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, " value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var74 string
-			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.mac", i))
+			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.BMCRef.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 525, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 505, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Hostname</label> <input type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-bmc-kind\" class=\"block text-sm font-medium text-gray-700\">BMC Kind</label> <input type=\"text\" name=\"bmcKind\" id=\"edit-bmc-kind\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.BMCRef != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, " value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var75 string
-			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.hostname", i))
+			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.BMCRef.Kind)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 530, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 513, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 185, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP IP Address</label> <input type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-bmc-apigroup\" class=\"block text-sm font-medium text-gray-700\">BMC API Group</label> <input type=\"text\" name=\"bmcAPIGroup\" id=\"edit-bmc-apigroup\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.BMCRef != nil && hw.Spec.BMCRef.APIGroup != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, " value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var76 string
-			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.address", i))
+			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(*hw.Spec.BMCRef.APIGroup)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 535, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 521, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Netmask</label> <input type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div><!-- Network Interfaces Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Network Interfaces</h4><div id=\"interfaces-container\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for i, iface := range hw.Spec.Interfaces {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "<div class=\"border border-gray-100 rounded p-3 mb-3\"><h5 class=\"text-sm font-medium text-gray-800 mb-2\">Interface ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var77 string
-			templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.netmask", i))
+			templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", i+1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 540, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 534, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Gateway</label> <input type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "</h5><div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Disable DHCP</label> <input type=\"checkbox\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var78 string
-			templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.gateway", i))
+			templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].disableDhcp", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 545, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 538, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "\" class=\"mt-1\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "</div></div><!-- Disks Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Disks</h4><div id=\"disks-container\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		for i, disk := range hw.Spec.Disks {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "<div class=\"border border-gray-100 rounded p-3 mb-3\"><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Disk ")
+			if iface.DisableDHCP {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, " checked")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP MAC</label> <input type=\"text\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var79 string
-			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", i+1))
+			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.mac", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 562, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 545, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, " - Device</label> <input type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var80 string
-			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("disks[%d].device", i))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 563, Col: 99}
+			if iface.DHCP != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, " value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var80 string
+				templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(iface.DHCP.MAC)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 547, Col: 70}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Hostname</label> <input type=\"text\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var81 string
-			templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(disk.Device)
+			templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.hostname", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 564, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 553, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "</div></div><!-- Resources Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Resources</h4><div class=\"space-y-3\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		for key, quantity := range hw.Spec.Resources {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Resource Name</label> <input type=\"text\" name=\"resourceKeys[]\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if iface.DHCP != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, " value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var82 string
+				templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(iface.DHCP.Hostname)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 555, Col: 75}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			var templ_7745c5c3_Var82 string
-			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 581, Col: 87}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Quantity</label> <input type=\"text\" name=\"resourceValues[]\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP IP Address</label> <input type=\"text\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var83 string
-			templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(quantity.String())
+			templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.address", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 586, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 561, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "</div></div><!-- References Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">References</h4><div class=\"space-y-3\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		for key, ref := range hw.Spec.References {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "<div class=\"border border-gray-100 rounded p-3\"><h5 class=\"text-sm font-medium text-gray-800 mb-2\">Reference: ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if iface.DHCP != nil && iface.DHCP.IP != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, " value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var84 string
+				templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(iface.DHCP.IP.Address)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 563, Col: 77}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			var templ_7745c5c3_Var84 string
-			templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 600, Col: 98}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "</h5><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Reference Key</label> <input type=\"text\" name=\"referenceKeys[]\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Netmask</label> <input type=\"text\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var85 string
-			templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+			templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.netmask", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 604, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 569, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Name</label> <input type=\"text\" name=\"referenceNames[]\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var86 string
-			templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Name)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 609, Col: 98}
+			if iface.DHCP != nil && iface.DHCP.IP != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, " value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var86 string
+				templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(iface.DHCP.IP.Netmask)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 571, Col: 77}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Namespace</label> <input type=\"text\" name=\"referenceNamespaces[]\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">DHCP Gateway</label> <input type=\"text\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var87 string
-			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Namespace)
+			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("interfaces[%d].dhcp.ip.gateway", i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 614, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 577, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Resource</label> <input type=\"text\" name=\"referenceResources[]\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var88 string
-			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Resource)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 619, Col: 106}
+			if iface.DHCP != nil && iface.DHCP.IP != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, " value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var88 string
+				templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(iface.DHCP.IP.Gateway)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 579, Col: 77}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "</div></div><!-- Hardware Metadata Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Hardware Metadata</h4><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-manufacturer\" class=\"block text-sm font-medium text-gray-700\">Manufacturer</label> <input type=\"text\" name=\"manufacturer\" id=\"edit-manufacturer\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-instance-id\" class=\"block text-sm font-medium text-gray-700\">Instance ID</label> <input type=\"text\" name=\"instanceId\" id=\"edit-instance-id\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-facility-code\" class=\"block text-sm font-medium text-gray-700\">Facility Code</label> <input type=\"text\" name=\"facilityCode\" id=\"edit-facility-code\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-plan-slug\" class=\"block text-sm font-medium text-gray-700\">Plan Slug</label> <input type=\"text\" name=\"planSlug\" id=\"edit-plan-slug\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div><!-- Labels Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Labels</h4><div class=\"space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "</div></div><!-- Disks Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Disks</h4><div id=\"disks-container\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if len(hw.Labels) > 0 {
-			for key, value := range hw.Labels {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Label Key</label> <input type=\"text\" name=\"labelKeys[]\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var89 string
-				templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 664, Col: 88}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Label Value</label> <input type=\"text\" name=\"labelValues[]\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var90 string
-				templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(value)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 669, Col: 92}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+		for i, disk := range hw.Spec.Disks {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "<div class=\"border border-gray-100 rounded p-3 mb-3\"><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Disk ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
 			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Label Key</label> <input type=\"text\" name=\"labelKeys[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter label key\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Label Value</label> <input type=\"text\" name=\"labelValues[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter label value\"></div></div>")
+			var templ_7745c5c3_Var89 string
+			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", i+1))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 597, Col: 123}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 219, " - Device</label> <input type=\"text\" name=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var90 string
+			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("disks[%d].device", i))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 598, Col: 99}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var91 string
+			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(disk.Device)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 599, Col: 62}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 221, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, "</div></div><!-- Annotations Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Annotations</h4><div class=\"space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 222, "</div></div><!-- Resources Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Resources</h4><div class=\"space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if len(hw.Annotations) > 0 {
-			for key, value := range hw.Annotations {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Key</label> <input type=\"text\" name=\"annotationKeys[]\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var91 string
-				templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 702, Col: 93}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Value</label> <input type=\"text\" name=\"annotationValues[]\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var92 string
-				templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(value)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 707, Col: 97}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Key</label> <input type=\"text\" name=\"annotationKeys[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter annotation key\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Value</label> <input type=\"text\" name=\"annotationValues[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter annotation value\"></div></div>")
+		for key, quantity := range hw.Spec.Resources {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Resource Name</label> <input type=\"text\" name=\"resourceKeys[]\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "</div></div><!-- Instance Metadata Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Instance Metadata</h4><div class=\"space-y-4\"><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-instance-userdata\" class=\"block text-sm font-medium text-gray-700\">Instance User Data</label> <textarea name=\"instance.userdata\" id=\"edit-instance-userdata\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter instance user data...\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.Userdata != "" {
+			var templ_7745c5c3_Var92 string
+			templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 616, Col: 87}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Quantity</label> <input type=\"text\" name=\"resourceValues[]\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			var templ_7745c5c3_Var93 string
-			templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.Userdata)
+			templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(quantity.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 742, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 621, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 225, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "</textarea></div><div><label for=\"edit-instance-crypted-root-password\" class=\"block text-sm font-medium text-gray-700\">Crypted Root Password</label> <input type=\"password\" name=\"instance.cryptedRootPassword\" id=\"edit-instance-crypted-root-password\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter crypted root password\"></div></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-instance-ssh-keys\" class=\"block text-sm font-medium text-gray-700\">SSH Keys (one per line)</label> <textarea name=\"instance.sshKeys\" id=\"edit-instance-ssh-keys\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono text-xs\" placeholder=\"Enter SSH public keys, one per line...\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 226, "</div></div><!-- References Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">References</h4><div class=\"space-y-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for key, ref := range hw.Spec.References {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, "<div class=\"border border-gray-100 rounded p-3\"><h5 class=\"text-sm font-medium text-gray-800 mb-2\">Reference: ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var94 string
+			templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 635, Col: 98}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 228, "</h5><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Reference Key</label> <input type=\"text\" name=\"referenceKeys[]\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var95 string
+			templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 639, Col: 92}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 229, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Name</label> <input type=\"text\" name=\"referenceNames[]\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var96 string
+			templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 644, Col: 98}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 230, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Namespace</label> <input type=\"text\" name=\"referenceNamespaces[]\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var97 string
+			templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Namespace)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 649, Col: 108}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 231, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Resource</label> <input type=\"text\" name=\"referenceResources[]\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var98 string
+			templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(ref.Resource)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 654, Col: 106}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 232, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 233, "</div></div><!-- Hardware Metadata Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Hardware Metadata</h4><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-manufacturer\" class=\"block text-sm font-medium text-gray-700\">Manufacturer ID</label> <input type=\"text\" name=\"manufacturer.id\" id=\"edit-manufacturer\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Manufacturer != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 234, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var99 string
+			templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Manufacturer.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 671, Col: 76}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var99))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 235, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 236, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-manufacturer-slug\" class=\"block text-sm font-medium text-gray-700\">Manufacturer Slug</label> <input type=\"text\" name=\"manufacturer.slug\" id=\"edit-manufacturer-slug\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Manufacturer != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 237, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var100 string
+			templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Manufacturer.Slug)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 679, Col: 78}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var100))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 239, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-instance-id\" class=\"block text-sm font-medium text-gray-700\">Instance ID</label> <input type=\"text\" name=\"instance.id\" id=\"edit-instance-id\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 240, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var101 string
+			templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 687, Col: 72}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var101))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 241, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 242, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-instance-state\" class=\"block text-sm font-medium text-gray-700\">Instance State</label> <input type=\"text\" name=\"instance.state\" id=\"edit-instance-state\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 243, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var102 string
+			templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.State)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 695, Col: 75}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var102))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 244, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 245, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-facility-code\" class=\"block text-sm font-medium text-gray-700\">Facility Code</label> <input type=\"text\" name=\"facility.code\" id=\"edit-facility-code\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Facility != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 246, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var103 string
+			templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Facility.FacilityCode)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 703, Col: 82}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 247, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 248, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label for=\"edit-plan-slug\" class=\"block text-sm font-medium text-gray-700\">Plan Slug</label> <input type=\"text\" name=\"facility.planSlug\" id=\"edit-plan-slug\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Facility != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 249, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var104 string
+			templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Facility.PlanSlug)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 711, Col: 78}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 250, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 251, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div></div><!-- Labels Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Labels</h4><div class=\"space-y-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if len(hw.Labels) > 0 {
+			for key, value := range hw.Labels {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 252, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Label Key</label> <input type=\"text\" name=\"labelKeys[]\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var105 string
+				templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 727, Col: 88}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Label Value</label> <input type=\"text\" name=\"labelValues[]\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var106 string
+				templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 732, Col: 92}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 254, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 255, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Label Key</label> <input type=\"text\" name=\"labelKeys[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter label key\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Label Value</label> <input type=\"text\" name=\"labelValues[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter label value\"></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 256, "</div></div><!-- Annotations Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Annotations</h4><div class=\"space-y-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if len(hw.Annotations) > 0 {
+			for key, value := range hw.Annotations {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 257, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Key</label> <input type=\"text\" name=\"annotationKeys[]\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var107 string
+				templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 765, Col: 93}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var107))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 258, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Value</label> <input type=\"text\" name=\"annotationValues[]\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var108 string
+				templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 770, Col: 97}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 259, "\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\"></div></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Key</label> <input type=\"text\" name=\"annotationKeys[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter annotation key\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Annotation Value</label> <input type=\"text\" name=\"annotationValues[]\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter annotation value\"></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "</div></div><!-- Instance Metadata Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Instance Metadata</h4><div class=\"space-y-4\"><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-instance-userdata\" class=\"block text-sm font-medium text-gray-700\">Instance User Data</label> <textarea name=\"instance.userdata\" id=\"edit-instance-userdata\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter instance user data...\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.Userdata != "" {
+			var templ_7745c5c3_Var109 string
+			templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.Userdata)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 805, Col: 75}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var109))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "</textarea></div><div><label for=\"edit-instance-crypted-root-password\" class=\"block text-sm font-medium text-gray-700\">Crypted Root Password</label> <input type=\"password\" name=\"instance.cryptedRootPassword\" id=\"edit-instance-crypted-root-password\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var110 string
+			templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.CryptedRootPassword)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 813, Col: 93}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter crypted root password\"></div></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"edit-instance-ssh-keys\" class=\"block text-sm font-medium text-gray-700\">SSH Keys (one per line)</label> <textarea name=\"instance.sshKeys\" id=\"edit-instance-ssh-keys\" rows=\"4\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono text-xs\" placeholder=\"Enter SSH public keys, one per line...\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && len(hw.Spec.Metadata.Instance.SSHKeys) > 0 {
 			for i, key := range hw.Spec.Metadata.Instance.SSHKeys {
-				var templ_7745c5c3_Var94 string
-				templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+				var templ_7745c5c3_Var111 string
+				templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 761, Col: 48}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 827, Col: 48}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var111))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1920,33 +2305,125 @@ func HardwareDetailPage(hw tinkerbell.Hardware) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "</textarea></div><div><label for=\"edit-instance-tags\" class=\"block text-sm font-medium text-gray-700\">Tags (comma-separated)</label> <input type=\"text\" name=\"instance.tags\" id=\"edit-instance-tags\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter tags separated by commas\"></div></div></div></div><!-- Operating System Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Operating System</h4><div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4\"><div><label for=\"edit-os-slug\" class=\"block text-sm font-medium text-gray-700\">OS Slug</label> <input type=\"text\" name=\"os.slug\" id=\"edit-os-slug\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., ubuntu_20_04\"></div><div><label for=\"edit-os-distro\" class=\"block text-sm font-medium text-gray-700\">Distribution</label> <input type=\"text\" name=\"os.distro\" id=\"edit-os-distro\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., ubuntu\"></div><div><label for=\"edit-os-version\" class=\"block text-sm font-medium text-gray-700\">Version</label> <input type=\"text\" name=\"os.version\" id=\"edit-os-version\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., 20.04\"></div><div><label for=\"edit-os-image-tag\" class=\"block text-sm font-medium text-gray-700\">Image Tag</label> <input type=\"text\" name=\"os.imageTag\" id=\"edit-os-image-tag\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., latest\"></div></div></div><!-- Submit Buttons --><div class=\"flex justify-end space-x-3 pt-4 border-t\"><button type=\"button\" onclick=\"document.getElementById('edit-modal').style.display='none'\" class=\"px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50\">Cancel</button> <button type=\"submit\" class=\"px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700\">Update Hardware</button></div></form></div></div></div><!-- Delete Confirmation Modal --><div id=\"delete-modal\" class=\"fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center\"><div class=\"bg-white rounded-lg p-6 max-w-md w-full mx-4\"><div class=\"flex justify-between items-center mb-4\"><h3 class=\"text-lg font-medium text-gray-900\">Delete Hardware</h3><button type=\"button\" onclick=\"document.getElementById('delete-modal').style.display='none'\" class=\"text-gray-400 hover:text-gray-600\"><svg class=\"h-6 w-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><div class=\"mb-4\"><p class=\"text-sm text-gray-500\">Are you sure you want to delete the hardware \"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 267, "</textarea></div><div><label for=\"edit-instance-tags\" class=\"block text-sm font-medium text-gray-700\">Tags (comma-separated)</label> <input type=\"text\" name=\"instance.tags\" id=\"edit-instance-tags\" class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"Enter tags separated by commas\"></div></div></div></div><!-- Operating System Section --><div class=\"border border-gray-200 rounded-lg p-4\"><h4 class=\"text-lg font-medium text-gray-900 mb-4\">Operating System</h4><div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4\"><div><label for=\"edit-os-slug\" class=\"block text-sm font-medium text-gray-700\">OS Slug</label> <input type=\"text\" name=\"os.slug\" id=\"edit-os-slug\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var95 string
-		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 838, Col: 103}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 268, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var112 string
+			templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.OperatingSystem.Slug)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 853, Col: 90}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., ubuntu_20_04\"></div><div><label for=\"edit-os-distro\" class=\"block text-sm font-medium text-gray-700\">Distribution</label> <input type=\"text\" name=\"os.distro\" id=\"edit-os-distro\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 219, "\"? This action cannot be undone.</p></div><div class=\"flex justify-end space-x-3\"><button type=\"button\" onclick=\"document.getElementById('delete-modal').style.display='none'\" class=\"px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50\">Cancel</button> <button type=\"button\" hx-delete=\"")
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var113 string
+			templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.OperatingSystem.Distro)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 862, Col: 92}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var113))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 272, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 273, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., ubuntu\"></div><div><label for=\"edit-os-version\" class=\"block text-sm font-medium text-gray-700\">Version</label> <input type=\"text\" name=\"os.version\" id=\"edit-os-version\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var96 string
-		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs("/hardware/" + hw.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 844, Col: 53}
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 274, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var114 string
+			templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.OperatingSystem.Version)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 871, Col: 93}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var114))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 275, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 276, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., 20.04\"></div><div><label for=\"edit-os-image-tag\" class=\"block text-sm font-medium text-gray-700\">Image Tag</label> <input type=\"text\" name=\"os.imageTag\" id=\"edit-os-image-tag\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "\" hx-confirm=\"Are you sure?\" hx-target=\"body\" hx-swap=\"outerHTML\" class=\"px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700\">Delete</button></div></div></div></body></html>")
+		if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 277, " value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var115 string
+			templ_7745c5c3_Var115, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Spec.Metadata.Instance.OperatingSystem.ImageTag)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 880, Col: 94}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var115))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 278, "\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 279, " class=\"mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm\" placeholder=\"e.g., latest\"></div></div></div><!-- Submit Buttons --><div class=\"flex justify-end space-x-3 pt-4 border-t\"><button type=\"button\" onclick=\"document.getElementById('edit-modal').style.display='none'\" class=\"px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50\">Cancel</button> <button type=\"submit\" class=\"px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700\">Update Hardware</button></div></form></div></div></div><!-- Delete Confirmation Modal --><div id=\"delete-modal\" class=\"fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center\"><div class=\"bg-white rounded-lg p-6 max-w-md w-full mx-4\"><div class=\"flex justify-between items-center mb-4\"><h3 class=\"text-lg font-medium text-gray-900\">Delete Hardware</h3><button type=\"button\" onclick=\"document.getElementById('delete-modal').style.display='none'\" class=\"text-gray-400 hover:text-gray-600\"><svg class=\"h-6 w-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div><div class=\"mb-4\"><p class=\"text-sm text-gray-500\">Are you sure you want to delete the hardware \"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var116 string
+		templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinStringErrs(hw.Name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 916, Col: 103}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var116))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 280, "\"? This action cannot be undone.</p></div><div class=\"flex justify-end space-x-3\"><button type=\"button\" onclick=\"document.getElementById('delete-modal').style.display='none'\" class=\"px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50\">Cancel</button> <button type=\"button\" hx-delete=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var117 string
+		templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.JoinStringErrs("/hardware/" + hw.Name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `HardwareDetailPage.templ`, Line: 922, Col: 53}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var117))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 281, "\" hx-confirm=\"Are you sure?\" hx-target=\"body\" hx-swap=\"outerHTML\" class=\"px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700\">Delete</button></div></div></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

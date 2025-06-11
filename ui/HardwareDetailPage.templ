@@ -475,13 +475,21 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                             <label for="edit-user-data" class="block text-sm font-medium text-gray-700">User Data</label>
                             <textarea name="userData" id="edit-user-data" rows="4" 
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                placeholder="Enter user data..."></textarea>
+                                placeholder="Enter user data...">
+                                if hw.Spec.UserData != nil {
+                                    {*hw.Spec.UserData}
+                                }
+                            </textarea>
                         </div>
                         <div>
                             <label for="edit-vendor-data" class="block text-sm font-medium text-gray-700">Vendor Data</label>
                             <textarea name="vendorData" id="edit-vendor-data" rows="4" 
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                placeholder="Enter vendor data..."></textarea>
+                                placeholder="Enter vendor data...">
+                                if hw.Spec.VendorData != nil {
+                                    {*hw.Spec.VendorData}
+                                }
+                            </textarea>
                         </div>
                     </div>
                 </div>
@@ -493,16 +501,25 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                         <div>
                             <label for="edit-bmc-name" class="block text-sm font-medium text-gray-700">BMC Name</label>
                             <input type="text" name="bmcName" id="edit-bmc-name" 
+                                if hw.Spec.BMCRef != nil {
+                                    value={ hw.Spec.BMCRef.Name }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="edit-bmc-kind" class="block text-sm font-medium text-gray-700">BMC Kind</label>
                             <input type="text" name="bmcKind" id="edit-bmc-kind" 
+                                if hw.Spec.BMCRef != nil {
+                                    value={ hw.Spec.BMCRef.Kind }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="edit-bmc-apigroup" class="block text-sm font-medium text-gray-700">BMC API Group</label>
                             <input type="text" name="bmcAPIGroup" id="edit-bmc-apigroup" 
+                                if hw.Spec.BMCRef != nil && hw.Spec.BMCRef.APIGroup != nil {
+                                    value={ *hw.Spec.BMCRef.APIGroup }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                     </div>
@@ -512,37 +529,55 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                 <div class="border border-gray-200 rounded-lg p-4">
                     <h4 class="text-lg font-medium text-gray-900 mb-4">Network Interfaces</h4>
                     <div id="interfaces-container">
-                        for i, _ := range hw.Spec.Interfaces {
+                        for i, iface := range hw.Spec.Interfaces {
                             <div class="border border-gray-100 rounded p-3 mb-3">
                                 <h5 class="text-sm font-medium text-gray-800 mb-2">Interface {fmt.Sprintf("%d", i+1)}</h5>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">Disable DHCP</label>
-                                        <input type="checkbox" name={fmt.Sprintf("interfaces[%d].disableDhcp", i)} class="mt-1"/>
+                                        <input type="checkbox" name={fmt.Sprintf("interfaces[%d].disableDhcp", i)} class="mt-1"
+                                            if iface.DisableDHCP {
+                                                checked
+                                            }/>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP MAC</label>
                                         <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.mac", i)} 
+                                            if iface.DHCP != nil {
+                                                value={ iface.DHCP.MAC }
+                                            }
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP Hostname</label>
                                         <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.hostname", i)} 
+                                            if iface.DHCP != nil {
+                                                value={ iface.DHCP.Hostname }
+                                            }
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP IP Address</label>
                                         <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.address", i)} 
+                                            if iface.DHCP != nil && iface.DHCP.IP != nil {
+                                                value={ iface.DHCP.IP.Address }
+                                            }
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP Netmask</label>
                                         <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.netmask", i)} 
+                                            if iface.DHCP != nil && iface.DHCP.IP != nil {
+                                                value={ iface.DHCP.IP.Netmask }
+                                            }
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">DHCP Gateway</label>
                                         <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip.gateway", i)} 
+                                            if iface.DHCP != nil && iface.DHCP.IP != nil {
+                                                value={ iface.DHCP.IP.Gateway }
+                                            }
                                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                                     </div>
                                 </div>
@@ -630,23 +665,51 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                     <h4 class="text-lg font-medium text-gray-900 mb-4">Hardware Metadata</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label for="edit-manufacturer" class="block text-sm font-medium text-gray-700">Manufacturer</label>
-                            <input type="text" name="manufacturer" id="edit-manufacturer" 
+                            <label for="edit-manufacturer" class="block text-sm font-medium text-gray-700">Manufacturer ID</label>
+                            <input type="text" name="manufacturer.id" id="edit-manufacturer" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Manufacturer != nil {
+                                    value={ hw.Spec.Metadata.Manufacturer.ID }
+                                }
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-manufacturer-slug" class="block text-sm font-medium text-gray-700">Manufacturer Slug</label>
+                            <input type="text" name="manufacturer.slug" id="edit-manufacturer-slug" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Manufacturer != nil {
+                                    value={ hw.Spec.Metadata.Manufacturer.Slug }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="edit-instance-id" class="block text-sm font-medium text-gray-700">Instance ID</label>
-                            <input type="text" name="instanceId" id="edit-instance-id" 
+                            <input type="text" name="instance.id" id="edit-instance-id" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+                                    value={ hw.Spec.Metadata.Instance.ID }
+                                }
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-instance-state" class="block text-sm font-medium text-gray-700">Instance State</label>
+                            <input type="text" name="instance.state" id="edit-instance-state" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+                                    value={ hw.Spec.Metadata.Instance.State }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="edit-facility-code" class="block text-sm font-medium text-gray-700">Facility Code</label>
-                            <input type="text" name="facilityCode" id="edit-facility-code" 
+                            <input type="text" name="facility.code" id="edit-facility-code" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Facility != nil {
+                                    value={ hw.Spec.Metadata.Facility.FacilityCode }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
                             <label for="edit-plan-slug" class="block text-sm font-medium text-gray-700">Plan Slug</label>
-                            <input type="text" name="planSlug" id="edit-plan-slug" 
+                            <input type="text" name="facility.planSlug" id="edit-plan-slug" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Facility != nil {
+                                    value={ hw.Spec.Metadata.Facility.PlanSlug }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                     </div>
@@ -746,6 +809,9 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                             <div>
                                 <label for="edit-instance-crypted-root-password" class="block text-sm font-medium text-gray-700">Crypted Root Password</label>
                                 <input type="password" name="instance.cryptedRootPassword" id="edit-instance-crypted-root-password" 
+                                    if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil {
+                                        value={ hw.Spec.Metadata.Instance.CryptedRootPassword }
+                                    }
                                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                     placeholder="Enter crypted root password">
                             </div>
@@ -783,24 +849,36 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                         <div>
                             <label for="edit-os-slug" class="block text-sm font-medium text-gray-700">OS Slug</label>
                             <input type="text" name="os.slug" id="edit-os-slug" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+                                    value={ hw.Spec.Metadata.Instance.OperatingSystem.Slug }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 placeholder="e.g., ubuntu_20_04">
                         </div>
                         <div>
                             <label for="edit-os-distro" class="block text-sm font-medium text-gray-700">Distribution</label>
                             <input type="text" name="os.distro" id="edit-os-distro" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+                                    value={ hw.Spec.Metadata.Instance.OperatingSystem.Distro }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 placeholder="e.g., ubuntu">
                         </div>
                         <div>
                             <label for="edit-os-version" class="block text-sm font-medium text-gray-700">Version</label>
                             <input type="text" name="os.version" id="edit-os-version" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+                                    value={ hw.Spec.Metadata.Instance.OperatingSystem.Version }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 placeholder="e.g., 20.04">
                         </div>
                         <div>
                             <label for="edit-os-image-tag" class="block text-sm font-medium text-gray-700">Image Tag</label>
                             <input type="text" name="os.imageTag" id="edit-os-image-tag" 
+                                if hw.Spec.Metadata != nil && hw.Spec.Metadata.Instance != nil && hw.Spec.Metadata.Instance.OperatingSystem != nil {
+                                    value={ hw.Spec.Metadata.Instance.OperatingSystem.ImageTag }
+                                }
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 placeholder="e.g., latest">
                         </div>
