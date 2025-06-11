@@ -1,6 +1,9 @@
 package ui
 
-import "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+import (
+    "fmt"
+    "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+)
 
 templ HardwareDetailPage(hw tinkerbell.Hardware) {
 <!DOCTYPE html>
@@ -123,9 +126,9 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
     </div>
 
     <!-- Edit Modal -->
-    <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
+    <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-6 border-b">
                 <h3 class="text-lg font-medium text-gray-900">Edit Hardware</h3>
                 <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" class="text-gray-400 hover:text-gray-600">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,14 +136,205 @@ templ HardwareDetailPage(hw tinkerbell.Hardware) {
                     </svg>
                 </button>
             </div>
-            <form hx-put={"/hardware/" + hw.Name} hx-target="body" hx-swap="outerHTML">
-                <div class="mb-4">
-                    <label for="edit-name" class="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" name="name" id="edit-name" value={hw.Name} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            
+            <form hx-put={"/hardware/" + hw.Name} hx-target="body" hx-swap="outerHTML" class="p-6 space-y-6">
+                <!-- Basic Information Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit-name" class="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" name="name" id="edit-name" value={hw.Name} 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-tink-version" class="block text-sm font-medium text-gray-700">Tink Version</label>
+                            <input type="number" name="tinkVersion" id="edit-tink-version" value={fmt.Sprintf("%d", hw.Spec.TinkVersion)}
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 mt-4">
+                        <div>
+                            <label for="edit-user-data" class="block text-sm font-medium text-gray-700">User Data</label>
+                            <textarea name="userData" id="edit-user-data" rows="4" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="Enter user data..."></textarea>
+                        </div>
+                        <div>
+                            <label for="edit-vendor-data" class="block text-sm font-medium text-gray-700">Vendor Data</label>
+                            <textarea name="vendorData" id="edit-vendor-data" rows="4" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                placeholder="Enter vendor data..."></textarea>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Update</button>
+
+                <!-- BMC Reference Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">BMC Reference</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="edit-bmc-name" class="block text-sm font-medium text-gray-700">BMC Name</label>
+                            <input type="text" name="bmcName" id="edit-bmc-name" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-bmc-kind" class="block text-sm font-medium text-gray-700">BMC Kind</label>
+                            <input type="text" name="bmcKind" id="edit-bmc-kind" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-bmc-apigroup" class="block text-sm font-medium text-gray-700">BMC API Group</label>
+                            <input type="text" name="bmcAPIGroup" id="edit-bmc-apigroup" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Interfaces Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Network Interfaces</h4>
+                    <div id="interfaces-container">
+                        for i, _ := range hw.Spec.Interfaces {
+                            <div class="border border-gray-100 rounded p-3 mb-3">
+                                <h5 class="text-sm font-medium text-gray-800 mb-2">Interface {fmt.Sprintf("%d", i+1)}</h5>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Netboot Enabled</label>
+                                        <input type="checkbox" name={fmt.Sprintf("interfaces[%d].netboot", i)} class="mt-1">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">DHCP MAC</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.mac", i)} 
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">DHCP Hostname</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.hostname", i)} 
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">DHCP IP</label>
+                                        <input type="text" name={fmt.Sprintf("interfaces[%d].dhcp.ip", i)} 
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Disks Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Disks</h4>
+                    <div id="disks-container">
+                        for i, disk := range hw.Spec.Disks {
+                            <div class="border border-gray-100 rounded p-3 mb-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Disk {fmt.Sprintf("%d", i+1)} - Device</label>
+                                        <input type="text" name={fmt.Sprintf("disks[%d].device", i)} 
+                                            value={disk.Device}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Resources Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Resources</h4>
+                    <div class="space-y-3">
+                        for key, quantity := range hw.Spec.Resources {
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Resource Name</label>
+                                    <input type="text" name="resourceKeys[]" value={key}
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Quantity</label>
+                                    <input type="text" name="resourceValues[]" value={quantity.String()}
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- References Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">References</h4>
+                    <div class="space-y-3">
+                        for key, ref := range hw.Spec.References {
+                            <div class="border border-gray-100 rounded p-3">
+                                <h5 class="text-sm font-medium text-gray-800 mb-2">Reference: {key}</h5>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Reference Key</label>
+                                        <input type="text" name="referenceKeys[]" value={key}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                                        <input type="text" name="referenceNames[]" value={ref.Name}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Namespace</label>
+                                        <input type="text" name="referenceNamespaces[]" value={ref.Namespace}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Resource</label>
+                                        <input type="text" name="referenceResources[]" value={ref.Resource}
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Hardware Metadata Section -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Hardware Metadata</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit-manufacturer" class="block text-sm font-medium text-gray-700">Manufacturer</label>
+                            <input type="text" name="manufacturer" id="edit-manufacturer" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-instance-id" class="block text-sm font-medium text-gray-700">Instance ID</label>
+                            <input type="text" name="instanceId" id="edit-instance-id" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-facility-code" class="block text-sm font-medium text-gray-700">Facility Code</label>
+                            <input type="text" name="facilityCode" id="edit-facility-code" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-plan-slug" class="block text-sm font-medium text-gray-700">Plan Slug</label>
+                            <input type="text" name="planSlug" id="edit-plan-slug" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                        Update Hardware
+                    </button>
                 </div>
             </form>
         </div>

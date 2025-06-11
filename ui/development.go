@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,6 +29,17 @@ func getMockHardware() []tinkerbell.Hardware {
 			Status: tinkerbell.HardwareStatus{
 				State: tinkerbell.HardwareReady,
 			},
+			Spec: tinkerbell.HardwareSpec{
+				BMCRef:      &v1.TypedLocalObjectReference{},
+				Interfaces:  []tinkerbell.Interface{},
+				References:  map[string]tinkerbell.Reference{},
+				Metadata:    &tinkerbell.HardwareMetadata{},
+				TinkVersion: 0,
+				Disks:       []tinkerbell.Disk{},
+				Resources:   map[string]resource.Quantity{},
+				UserData:    new(string),
+				VendorData:  new(string),
+			},
 		},
 		{
 			TypeMeta: metav1.TypeMeta{
@@ -43,6 +56,17 @@ func getMockHardware() []tinkerbell.Hardware {
 			},
 			Status: tinkerbell.HardwareStatus{
 				State: tinkerbell.HardwareError,
+			},
+			Spec: tinkerbell.HardwareSpec{
+				BMCRef:      &v1.TypedLocalObjectReference{},
+				Interfaces:  []tinkerbell.Interface{},
+				References:  map[string]tinkerbell.Reference{},
+				Metadata:    &tinkerbell.HardwareMetadata{},
+				TinkVersion: 0,
+				Disks:       []tinkerbell.Disk{},
+				Resources:   map[string]resource.Quantity{},
+				UserData:    new(string),
+				VendorData:  new(string),
 			},
 		},
 	}
