@@ -65,9 +65,10 @@ web/
 ## Features
 
 - 🌙 Dark/Light mode toggle with localStorage persistence
-- 📱 Responsive design with Tailwind CSS
+- 📱 Responsive design with mobile navigation menu
 - 🔍 Global search functionality
 - 🗂️ Collapsible navigation with BMC dropdown
+- 📱 Mobile-first sidebar with overlay and hamburger menu
 - 🎨 Themed logo switching
 - ⚡ Server-side rendering with templ
 
