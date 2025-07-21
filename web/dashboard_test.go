@@ -9,7 +9,8 @@ import (
 )
 
 func TestDashboardRender(t *testing.T) {
-	component := web.Dashboard()
+	namespaces := []string{"default", "kube-system", "test"}
+	component := web.Dashboard(namespaces)
 
 	var buf strings.Builder
 	err := component.Render(context.Background(), &buf)

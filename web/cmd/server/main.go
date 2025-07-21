@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os/exec"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tinkerbell/tinkerbell/web"
@@ -16,7 +18,14 @@ func main() {
 
 	// Dashboard route
 	r.GET("/", func(c *gin.Context) {
-		component := web.Dashboard()
+		namespaces := []string{"one", "two", "three"}
+		if out, err := exec.CommandContext(c.Request.Context(), "kubectl", "get", "ns", "-o", "jsonpath='{.items[*].metadata.name}'").CombinedOutput(); err == nil {
+			// convert out ([]byte) to []string
+			n := strings.Split(strings.ReplaceAll(string(out), "'", ""), " ")
+			namespaces = n
+		}
+
+		component := web.Dashboard(namespaces)
 		c.Header("Content-Type", "text/html")
 		component.Render(c.Request.Context(), c.Writer)
 	})
