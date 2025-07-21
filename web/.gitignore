@@ -1,0 +1,21 @@
+# Generated files
+*_templ.go
+
+# Binaries
+/bin/
+/server
+
+# Dependencies
+/node_modules/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
