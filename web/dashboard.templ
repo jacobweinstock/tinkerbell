@@ -7,6 +7,10 @@ templ Layout(title string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title }</title>
+			<!-- Favicon -->
+			<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+			<link rel="alternate icon" href="/favicon.ico"/>
+			<link rel="mask-icon" href="/artwork/Tinkerbell-Icon-Dark.svg" color="#000000"/>
 			<!-- Add Tailwind CSS via CDN -->
 			<script src="https://cdn.tailwindcss.com"></script>
 			<script>
@@ -14,7 +18,7 @@ templ Layout(title string) {
 					darkMode: 'class',
 				}
 			</script>
-			<link rel="stylesheet" href="output.css"/>
+			<link rel="stylesheet" href="css/output.css"/>
 		</head>
 		<body>
 			{ children... }
