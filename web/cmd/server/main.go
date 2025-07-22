@@ -14,7 +14,17 @@ func main() {
 
 	// Serve static files (CSS, images, etc.)
 	r.Static("/artwork", "./artwork")
-	r.Static("/css", "./")
+	r.Static("/css", "./css")
+
+	// Favicon routes
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.Header("Content-Type", "image/svg+xml")
+		c.File("./artwork/Tinkerbell-Icon-Dark.svg")
+	})
+	r.GET("/favicon.svg", func(c *gin.Context) {
+		c.Header("Content-Type", "image/svg+xml")
+		c.File("./artwork/Tinkerbell-Icon-Dark.svg")
+	})
 
 	// Dashboard route
 	r.GET("/", func(c *gin.Context) {
