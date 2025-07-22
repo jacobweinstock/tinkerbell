@@ -83,6 +83,55 @@ func main() {
 		component.Render(c.Request.Context(), c.Writer)
 	})
 
+	// Hardware data endpoint for htmx updates
+	r.GET("/hardware", func(c *gin.Context) {
+		// Get selected namespace from query parameter
+		selectedNamespace := c.Query("namespace")
+
+		// Build kubectl command for hardware - use selected namespace or all namespaces
+		var hardwareCmd []string
+		if selectedNamespace != "" {
+			hardwareCmd = []string{"kubectl", "get", "-n", selectedNamespace, "hardware", "-o", "json"}
+		} else {
+			hardwareCmd = []string{"kubectl", "get", "-A", "hardware", "-o", "json"}
+		}
+
+		var hardware []web.Hardware
+
+		// Fetch hardware from Kubernetes
+		if out, err := exec.CommandContext(c.Request.Context(), hardwareCmd[0], hardwareCmd[1:]...).CombinedOutput(); err == nil {
+			var hardwareList tinkerbell.HardwareList
+			if err := json.Unmarshal(out, &hardwareList); err != nil {
+				log.Println("Failed to unmarshal hardware list:", err)
+				// Fallback to sample data if parsing fails
+				hardware = getSampleHardware()
+			} else {
+				// Convert Kubernetes hardware to web hardware
+				for _, hw := range hardwareList.Items {
+					webHw := web.Hardware{
+						Name:        hw.Name,
+						Namespace:   hw.Namespace,
+						Description: getHardwareDescription(hw),
+						MAC:         getHardwareMAC(hw),
+						IPv4Address: getHardwareIP(hw),
+						Status:      getHardwareStatus(hw),
+						CreatedAt:   hw.GetCreationTimestamp().Format("2006-01-02 15:04:05"),
+					}
+					hardware = append(hardware, webHw)
+				}
+			}
+		} else {
+			log.Printf("Failed to fetch hardware: %v", err)
+			// Fallback to sample data if kubectl fails
+			hardware = getSampleHardware()
+		}
+
+		// Return just the hardware table content
+		component := web.HardwareTableContent(hardware)
+		c.Header("Content-Type", "text/html")
+		component.Render(c.Request.Context(), c.Writer)
+	})
+
 	log.Println("Starting server on :8080...")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal("Failed to start server:", err)
