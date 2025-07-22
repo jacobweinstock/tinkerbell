@@ -3,13 +3,66 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/web"
 )
+
+const (
+	DefaultItemsPerPage = 10
+)
+
+// Helper function to create paginated hardware data
+func getPaginatedHardware(hardware []web.Hardware, page, itemsPerPage int) web.HardwarePageData {
+	totalItems := len(hardware)
+	totalPages := int(math.Ceil(float64(totalItems) / float64(itemsPerPage)))
+
+	if page < 1 {
+		page = 1
+	}
+	if page > totalPages && totalPages > 0 {
+		page = totalPages
+	}
+
+	startIndex := (page - 1) * itemsPerPage
+	endIndex := startIndex + itemsPerPage
+
+	if startIndex >= totalItems {
+		startIndex = totalItems
+	}
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	var paginatedHardware []web.Hardware
+	if startIndex < totalItems {
+		paginatedHardware = hardware[startIndex:endIndex]
+	}
+
+	startItem := 0
+	endItem := 0
+	if totalItems > 0 {
+		startItem = startIndex + 1
+		endItem = endIndex
+	}
+
+	return web.HardwarePageData{
+		Hardware: paginatedHardware,
+		Pagination: web.PaginationData{
+			CurrentPage:  page,
+			TotalPages:   totalPages,
+			TotalItems:   totalItems,
+			ItemsPerPage: itemsPerPage,
+			StartItem:    startItem,
+			EndItem:      endItem,
+		},
+	}
+}
 
 func main() {
 	r := gin.Default()
@@ -40,6 +93,19 @@ func main() {
 		// Get selected namespace from query parameter
 		selectedNamespace := c.Query("namespace")
 
+		// Get pagination parameters
+		pageStr := c.DefaultQuery("page", "1")
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			page = 1
+		}
+
+		itemsPerPageStr := c.DefaultQuery("per_page", strconv.Itoa(DefaultItemsPerPage))
+		itemsPerPage, err := strconv.Atoi(itemsPerPageStr)
+		if err != nil || itemsPerPage < 1 {
+			itemsPerPage = DefaultItemsPerPage
+		}
+
 		// Build kubectl command for hardware - use selected namespace or all namespaces
 		var hardwareCmd []string
 		if selectedNamespace != "" {
@@ -78,7 +144,10 @@ func main() {
 			hardware = getSampleHardware()
 		}
 
-		component := web.Homepage(namespaces, hardware)
+		// Create paginated hardware data
+		hardwarePageData := getPaginatedHardware(hardware, page, itemsPerPage)
+
+		component := web.Homepage(namespaces, hardwarePageData)
 		c.Header("Content-Type", "text/html")
 		component.Render(c.Request.Context(), c.Writer)
 	})
@@ -88,6 +157,19 @@ func main() {
 		// Get selected namespace from query parameter
 		selectedNamespace := c.Query("namespace")
 
+		// Get pagination parameters
+		pageStr := c.DefaultQuery("page", "1")
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			page = 1
+		}
+
+		itemsPerPageStr := c.DefaultQuery("per_page", strconv.Itoa(DefaultItemsPerPage))
+		itemsPerPage, err := strconv.Atoi(itemsPerPageStr)
+		if err != nil || itemsPerPage < 1 {
+			itemsPerPage = DefaultItemsPerPage
+		}
+
 		// Build kubectl command for hardware - use selected namespace or all namespaces
 		var hardwareCmd []string
 		if selectedNamespace != "" {
@@ -126,8 +208,11 @@ func main() {
 			hardware = getSampleHardware()
 		}
 
+		// Create paginated hardware data
+		hardwarePageData := getPaginatedHardware(hardware, page, itemsPerPage)
+
 		// Return just the hardware table content
-		component := web.HardwareTableContent(hardware)
+		component := web.HardwareTableContent(hardwarePageData)
 		c.Header("Content-Type", "text/html")
 		component.Render(c.Request.Context(), c.Writer)
 	})
