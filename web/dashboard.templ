@@ -27,12 +27,12 @@ templ Layout(title string) {
 	</html>
 }
 
-templ Homepage(namespaces []string) {
+templ Homepage(namespaces []string, hardware []Hardware) {
 	@Layout("Tinkerbell") {
 		<div class="flex h-screen bg-white dark:bg-gray-600">
 			@MobileMenuOverlay()
 			@Sidebar(namespaces)
-			@MainContent()
+			@MainContent(hardware)
 		</div>
 	}
 }
@@ -114,6 +114,16 @@ type NavItem struct {
 	Href string
 }
 
+type Hardware struct {
+	Name        string
+	Namespace   string
+	Description string
+	MAC         string
+	IPv4Address string
+	Status      string
+	CreatedAt   string
+}
+
 templ Navigation() {
 	<!-- Navigation links -->
 	<div class="flex flex-col flex-1 overflow-y-auto">
@@ -174,11 +184,11 @@ templ BMCDropdown() {
 	</ul>
 }
 
-templ MainContent() {
+templ MainContent(hardware []Hardware) {
 	<!-- Main content -->
 	<div class="flex flex-col flex-1 overflow-y-auto">
 		@Header()
-		@ContentArea()
+		@ContentArea(hardware)
 	</div>
 }
 
@@ -242,10 +252,176 @@ templ DarkModeToggle() {
 	</div>
 }
 
-templ ContentArea() {
-	<div class="p-4 bg-white dark:bg-gray-600 flex flex-col dark:text-white text-black items-center justify-center">
-		<h1 class="text-2xl font-bold">Welcome to Neverland!</h1>
-		<p>Keep track of the lost boys here.</p>
+templ ContentArea(hardware []Hardware) {
+	<div class="p-6 bg-white dark:bg-gray-800">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Hardware</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage and monitor your hardware infrastructure</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Add Hardware
+				</button>
+				<button class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+					</svg>
+					Import
+				</button>
+			</div>
+			<div class="flex items-center space-x-4">
+				<div class="relative">
+					<input type="text" placeholder="Search hardware..." class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+						<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Hardware Table -->
+		<div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<thead class="bg-gray-50 dark:bg-gray-700">
+						<tr>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								<input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700" />
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Name
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Namespace
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								MAC Address
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								IP Address
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Status
+							</th>
+							<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+								Created At
+							</th>
+							<th scope="col" class="relative px-6 py-3">
+								<span class="sr-only">Actions</span>
+							</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+						for _, hw := range hardware {
+						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+							<td class="px-6 py-4 whitespace-nowrap">
+								<input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700" />
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap">
+								<div class="flex items-center">
+									<div class="flex-shrink-0 h-10 w-10">
+										<div class="h-10 w-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+											<svg class="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z"></path>
+											</svg>
+										</div>
+									</div>
+									<div class="ml-4">
+										<div class="text-sm font-medium text-gray-900 dark:text-white">{ hw.Name }</div>
+										<div class="text-sm text-gray-500 dark:text-gray-400">{ hw.Description }</div>
+									</div>
+								</div>
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+								{ hw.Namespace }
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+								{ hw.MAC }
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+								{ hw.IPv4Address }
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap">
+								if hw.Status == "Online" {
+									<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+										{ hw.Status }
+									</span>
+								} else if hw.Status == "Provisioning" {
+									<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+										{ hw.Status }
+									</span>
+								} else {
+									<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+										{ hw.Status }
+									</span>
+								}
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+								{ hw.CreatedAt }
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+								<button class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3">Edit</button>
+								<button class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Delete</button>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Table Footer / Pagination -->
+		<div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+			<div class="flex-1 flex justify-between sm:hidden">
+				<button class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+					Previous
+				</button>
+				<button class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+					Next
+				</button>
+			</div>
+			<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+				<div>
+					<p class="text-sm text-gray-700 dark:text-gray-300">
+						Showing
+						<span class="font-medium">1</span>
+						to
+						<span class="font-medium">3</span>
+						of
+						<span class="font-medium">3</span>
+						results
+					</p>
+				</div>
+				<div>
+					<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+						<button class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+							<span class="sr-only">Previous</span>
+							<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+							</svg>
+						</button>
+						<button class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
+							1
+						</button>
+						<button class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+							<span class="sr-only">Next</span>
+							<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+								<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+							</svg>
+						</button>
+					</nav>
+				</div>
+			</div>
+		</div>
 	</div>
 }
 
