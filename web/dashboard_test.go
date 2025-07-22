@@ -10,7 +10,7 @@ import (
 
 func TestHomepageRender(t *testing.T) {
 	namespaces := []string{"default", "kube-system", "test"}
-	component := web.Homepage(namespaces, []web.Hardware{})
+	component := web.Homepage(namespaces, web.HardwarePageData{})
 
 	var buf strings.Builder
 	err := component.Render(context.Background(), &buf)
