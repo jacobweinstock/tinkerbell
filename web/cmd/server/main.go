@@ -26,7 +26,7 @@ func main() {
 		c.File("./artwork/Tinkerbell-Icon-Dark.svg")
 	})
 
-	// Dashboard route
+	// Home page route
 	r.GET("/", func(c *gin.Context) {
 		namespaces := []string{"one", "two", "three"}
 		if out, err := exec.CommandContext(c.Request.Context(), "kubectl", "get", "ns", "-o", "jsonpath='{.items[*].metadata.name}'").CombinedOutput(); err == nil {
@@ -35,7 +35,7 @@ func main() {
 			namespaces = n
 		}
 
-		component := web.Dashboard(namespaces)
+		component := web.Homepage(namespaces)
 		c.Header("Content-Type", "text/html")
 		component.Render(c.Request.Context(), c.Writer)
 	})

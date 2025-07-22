@@ -27,8 +27,8 @@ templ Layout(title string) {
 	</html>
 }
 
-templ Dashboard(namespaces []string) {
-	@Layout("Tinkerbell Dashboard") {
+templ Homepage(namespaces []string) {
+	@Layout("Tinkerbell") {
 		<div class="flex h-screen bg-white dark:bg-gray-600">
 			@MobileMenuOverlay()
 			@Sidebar(namespaces)
