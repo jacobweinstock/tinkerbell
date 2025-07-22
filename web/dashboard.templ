@@ -191,9 +191,11 @@ templ BMCDropdown() {
 
 templ MainContent(hardware []Hardware) {
 	<!-- Main content -->
-	<div class="flex flex-col flex-1 overflow-y-auto">
+	<div class="flex flex-col flex-1 min-h-0">
 		@Header()
-		@ContentArea(hardware)
+		<div class="flex-1 overflow-y-auto">
+			@ContentArea(hardware)
+		</div>
 	</div>
 }
 
@@ -258,7 +260,7 @@ templ DarkModeToggle() {
 }
 
 templ ContentArea(hardware []Hardware) {
-	<div class="p-6 bg-white dark:bg-gray-800">
+	<div class="p-6 bg-white dark:bg-gray-800 min-h-full">
 		<!-- Header -->
 		<div class="mb-6">
 			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Hardware</h1>

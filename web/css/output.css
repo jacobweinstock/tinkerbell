@@ -346,6 +346,12 @@
   .h-screen {
     height: 100vh;
   }
+  .min-h-0 {
+    min-height: calc(var(--spacing) * 0);
+  }
+  .min-h-full {
+    min-height: 100%;
+  }
   .w-3 {
     width: calc(var(--spacing) * 3);
   }
