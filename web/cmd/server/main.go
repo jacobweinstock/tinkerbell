@@ -15,6 +15,7 @@ import (
 
 const (
 	DefaultItemsPerPage = 10
+	AllNamespace        = "all"
 )
 
 // Helper function to create paginated hardware data
@@ -83,10 +84,11 @@ func main() {
 
 	// Home page route
 	r.GET("/", func(c *gin.Context) {
-		namespaces := []string{"one", "two", "three"}
+		namespaces := []string{AllNamespace} // Default to "all" namespace
 		if out, err := exec.CommandContext(c.Request.Context(), "kubectl", "get", "ns", "-o", "jsonpath='{.items[*].metadata.name}'").CombinedOutput(); err == nil {
 			// convert out ([]byte) to []string
-			n := strings.Split(strings.ReplaceAll(string(out), "'", ""), " ")
+			n := []string{AllNamespace}
+			n = append(n, strings.Split(strings.ReplaceAll(string(out), "'", ""), " ")...)
 			namespaces = n
 		}
 
@@ -108,10 +110,10 @@ func main() {
 
 		// Build kubectl command for hardware - use selected namespace or all namespaces
 		var hardwareCmd []string
-		if selectedNamespace != "" {
-			hardwareCmd = []string{"kubectl", "get", "-n", selectedNamespace, "hardware", "-o", "json"}
+		if selectedNamespace == "" || selectedNamespace == AllNamespace {
+			hardwareCmd = []string{"kubectl", "get", "hardware", "-o", "json", "-A"}
 		} else {
-			hardwareCmd = []string{"kubectl", "get", "-A", "hardware", "-o", "json"}
+			hardwareCmd = []string{"kubectl", "get", "-n", selectedNamespace, "hardware", "-o", "json"}
 		}
 
 		var hardware []web.Hardware
@@ -172,10 +174,10 @@ func main() {
 
 		// Build kubectl command for hardware - use selected namespace or all namespaces
 		var hardwareCmd []string
-		if selectedNamespace != "" {
-			hardwareCmd = []string{"kubectl", "get", "-n", selectedNamespace, "hardware", "-o", "json"}
-		} else {
+		if selectedNamespace == "" || selectedNamespace == AllNamespace {
 			hardwareCmd = []string{"kubectl", "get", "-A", "hardware", "-o", "json"}
+		} else {
+			hardwareCmd = []string{"kubectl", "get", "-n", selectedNamespace, "hardware", "-o", "json"}
 		}
 
 		var hardware []web.Hardware
