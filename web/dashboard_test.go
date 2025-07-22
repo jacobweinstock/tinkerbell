@@ -8,14 +8,14 @@ import (
 	"github.com/tinkerbell/tinkerbell/web"
 )
 
-func TestDashboardRender(t *testing.T) {
+func TestHomepageRender(t *testing.T) {
 	namespaces := []string{"default", "kube-system", "test"}
-	component := web.Dashboard(namespaces)
+	component := web.Homepage(namespaces, []web.Hardware{})
 
 	var buf strings.Builder
 	err := component.Render(context.Background(), &buf)
 	if err != nil {
-		t.Fatalf("Failed to render dashboard: %v", err)
+		t.Fatalf("Failed to render homepage: %v", err)
 	}
 
 	html := buf.String()
@@ -25,7 +25,7 @@ func TestDashboardRender(t *testing.T) {
 		t.Error("Expected DOCTYPE declaration")
 	}
 
-	if !strings.Contains(html, "Tinkerbell Dashboard") {
+	if !strings.Contains(html, "Tinkerbell") {
 		t.Error("Expected page title")
 	}
 
