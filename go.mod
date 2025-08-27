@@ -63,7 +63,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 )
 
-require github.com/a-h/templ v0.3.920
+require github.com/a-h/templ v0.3.943
 
 require (
 	cel.dev/expr v0.24.0 // indirect

@@ -51,6 +51,56 @@ templ Homepage(namespaces []string, hardwareData HardwarePageData) {
 	}
 }
 
+templ WorkflowPage(namespaces []string, workflowData WorkflowPageData) {
+	@Layout("Tinkerbell - Workflows") {
+		<div class="flex h-screen bg-white dark:bg-darkBg">
+			@MobileMenuOverlay()
+			@Sidebar(namespaces)
+			@WorkflowMainContent(workflowData)
+		</div>
+	}
+}
+
+templ TemplatePage(namespaces []string, templateData TemplatePageData) {
+	@Layout("Tinkerbell - Templates") {
+		<div class="flex h-screen bg-white dark:bg-darkBg">
+			@MobileMenuOverlay()
+			@Sidebar(namespaces)
+			@TemplateMainContent(templateData)
+		</div>
+	}
+}
+
+templ BMCMachinePage(namespaces []string, machineData BMCMachinePageData) {
+	@Layout("Tinkerbell - BMC Machines") {
+		<div class="flex h-screen bg-white dark:bg-darkBg">
+			@MobileMenuOverlay()
+			@Sidebar(namespaces)
+			@BMCMachineMainContent(machineData)
+		</div>
+	}
+}
+
+templ BMCJobPage(namespaces []string, jobData BMCJobPageData) {
+	@Layout("Tinkerbell - BMC Jobs") {
+		<div class="flex h-screen bg-white dark:bg-darkBg">
+			@MobileMenuOverlay()
+			@Sidebar(namespaces)
+			@BMCJobMainContent(jobData)
+		</div>
+	}
+}
+
+templ BMCTaskPage(namespaces []string, taskData BMCTaskPageData) {
+	@Layout("Tinkerbell - BMC Tasks") {
+		<div class="flex h-screen bg-white dark:bg-darkBg">
+			@MobileMenuOverlay()
+			@Sidebar(namespaces)
+			@BMCTaskMainContent(taskData)
+		</div>
+	}
+}
+
 templ Sidebar(namespaces []string) {
 	<!-- sidebar -->
 	<div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-100 dark:bg-darkNav text-white dark:text-white border-r border-gray-200 dark:border-darkBorderSoft transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:flex md:flex-col">
@@ -141,6 +191,52 @@ type Hardware struct {
 	CreatedAt   string
 }
 
+type Workflow struct {
+	Name        string
+	Namespace   string
+	TemplateRef string
+	State       string
+	Task        string
+	Action      string
+	CreatedAt   string
+}
+
+type Template struct {
+	Name      string
+	Namespace string
+	State     string
+	Data      string
+	CreatedAt string
+}
+
+type BMCMachine struct {
+	Name         string
+	Namespace    string
+	PowerState   string
+	Contactable  string
+	Endpoint     string
+	CreatedAt    string
+}
+
+type BMCJob struct {
+	Name         string
+	Namespace    string
+	MachineRef   string
+	Status       string
+	CompletedAt  string
+	CreatedAt    string
+}
+
+type BMCTask struct {
+	Name        string
+	Namespace   string
+	JobRef      string
+	TaskType    string
+	Status      string
+	CompletedAt string
+	CreatedAt   string
+}
+
 type PaginationData struct {
 	CurrentPage  int
 	TotalPages   int
@@ -155,14 +251,39 @@ type HardwarePageData struct {
 	Pagination PaginationData
 }
 
+type WorkflowPageData struct {
+	Workflows  []Workflow
+	Pagination PaginationData
+}
+
+type TemplatePageData struct {
+	Templates  []Template
+	Pagination PaginationData
+}
+
+type BMCMachinePageData struct {
+	Machines   []BMCMachine
+	Pagination PaginationData
+}
+
+type BMCJobPageData struct {
+	Jobs       []BMCJob
+	Pagination PaginationData
+}
+
+type BMCTaskPageData struct {
+	Tasks      []BMCTask
+	Pagination PaginationData
+}
+
 templ Navigation() {
 	<!-- Navigation links -->
 	<div class="flex flex-col flex-1 overflow-y-auto">
 		<nav class="flex-1 px-2 py-4">
 			for _, item := range []NavItem{
-				{Name: "Hardware", Icon: hardwareIcon(), Href: "#"},
-				{Name: "Templates", Icon: templatesIcon(), Href: "#"},
-				{Name: "Workflows", Icon: workflowsIcon(), Href: "#"},
+				{Name: "Hardware", Icon: hardwareIcon(), Href: "/"},
+				{Name: "Templates", Icon: templatesIcon(), Href: "/templates"},
+				{Name: "Workflows", Icon: workflowsIcon(), Href: "/workflows"},
 			} {
 				@NavLink(item)
 			}
@@ -202,14 +323,15 @@ templ BMCDropdown() {
 	</button>
 	<ul id="dropdown-example" class="hidden">
 		for _, item := range []NavItem{
-			{Name: "Machines", Icon: bmcIcon(), Href: "#"},
-			{Name: "Jobs", Icon: jobsIcon(), Href: "#"},
-			{Name: "Tasks", Icon: tasksIcon(), Href: "#"},
+			{Name: "Machines", Icon: bmcIcon(), Href: "/bmc/machines"},
+			{Name: "Jobs", Icon: jobsIcon(), Href: "/bmc/jobs"},
+			{Name: "Tasks", Icon: tasksIcon(), Href: "/bmc/tasks"},
 		} {
 			<li>
 				<a 
 					href={ templ.SafeURL(item.Href) }
-					class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 transition duration-200 rounded-lg pl-11 hover:bg-teal-50 dark:hover:bg-darkBorder hover:text-teal-700 dark:hover:text-teal-300"
+					class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 transition duration-200 rounded-lg pl-11 hover:bg-teal-50 dark:hover:bg-darkBorder hover:text-teal-700 dark:hover:text-teal-300 bmc-nav-item"
+					data-href={ item.Href }
 				>
 					<span class="mr-2">
 						@templ.Raw(item.Icon)
@@ -227,6 +349,56 @@ templ MainContent(hardwareData HardwarePageData) {
 		@Header()
 		<div class="flex-1 overflow-y-auto">
 			@ContentArea(hardwareData)
+		</div>
+	</div>
+}
+
+templ WorkflowMainContent(workflowData WorkflowPageData) {
+	<!-- Workflow Main content -->
+	<div class="flex flex-col flex-1 min-h-0">
+		@Header()
+		<div class="flex-1 overflow-y-auto">
+			@WorkflowContentArea(workflowData)
+		</div>
+	</div>
+}
+
+templ TemplateMainContent(templateData TemplatePageData) {
+	<!-- Template Main content -->
+	<div class="flex flex-col flex-1 min-h-0">
+		@Header()
+		<div class="flex-1 overflow-y-auto">
+			@TemplateContentArea(templateData)
+		</div>
+	</div>
+}
+
+templ BMCMachineMainContent(machineData BMCMachinePageData) {
+	<!-- BMC Machine Main content -->
+	<div class="flex flex-col flex-1 min-h-0">
+		@Header()
+		<div class="flex-1 overflow-y-auto">
+			@BMCMachineContentArea(machineData)
+		</div>
+	</div>
+}
+
+templ BMCJobMainContent(jobData BMCJobPageData) {
+	<!-- BMC Job Main content -->
+	<div class="flex flex-col flex-1 min-h-0">
+		@Header()
+		<div class="flex-1 overflow-y-auto">
+			@BMCJobContentArea(jobData)
+		</div>
+	</div>
+}
+
+templ BMCTaskMainContent(taskData BMCTaskPageData) {
+	<!-- BMC Task Main content -->
+	<div class="flex flex-col flex-1 min-h-0">
+		@Header()
+		<div class="flex-1 overflow-y-auto">
+			@BMCTaskContentArea(taskData)
 		</div>
 	</div>
 }
@@ -444,6 +616,141 @@ templ ContentArea(hardwareData HardwarePageData) {
 				</div>
 			</div>
 		</div>
+		</div>
+	</div>
+}
+
+templ WorkflowContentArea(workflowData WorkflowPageData) {
+	<div class="p-6 bg-white dark:bg-darkBg min-h-full">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Workflows</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Monitor and manage workflow executions</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Create Workflow
+				</button>
+			</div>
+		</div>
+
+		<!-- Workflows Table -->
+		<div id="workflow-content">
+			@WorkflowTableContent(workflowData)
+		</div>
+	</div>
+}
+
+templ TemplateContentArea(templateData TemplatePageData) {
+	<div class="p-6 bg-white dark:bg-darkBg min-h-full">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Templates</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage workflow templates and configurations</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:bg-purple-500 dark:hover:bg-purple-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Create Template
+				</button>
+			</div>
+		</div>
+
+		<!-- Templates Table -->
+		<div id="template-content">
+			@TemplateTableContent(templateData)
+		</div>
+	</div>
+}
+
+templ BMCMachineContentArea(machineData BMCMachinePageData) {
+	<div class="p-6 bg-white dark:bg-darkBg min-h-full">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">BMC Machines</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage baseboard management controllers</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 dark:bg-orange-500 dark:hover:bg-orange-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Add Machine
+				</button>
+			</div>
+		</div>
+
+		<!-- BMC Machines Table -->
+		<div id="machine-content">
+			@BMCMachineTableContent(machineData)
+		</div>
+	</div>
+}
+
+templ BMCJobContentArea(jobData BMCJobPageData) {
+	<div class="p-6 bg-white dark:bg-darkBg min-h-full">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">BMC Jobs</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Monitor BMC job executions</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Create Job
+				</button>
+			</div>
+		</div>
+
+		<!-- BMC Jobs Table -->
+		<div id="job-content">
+			@BMCJobTableContent(jobData)
+		</div>
+	</div>
+}
+
+templ BMCTaskContentArea(taskData BMCTaskPageData) {
+	<div class="p-6 bg-white dark:bg-darkBg min-h-full">
+		<!-- Header -->
+		<div class="mb-6">
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-white">BMC Tasks</h1>
+			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Monitor individual BMC task executions</p>
+		</div>
+
+		<!-- Actions bar -->
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div class="flex items-center space-x-4">
+				<button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 dark:bg-pink-500 dark:hover:bg-pink-600">
+					<svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+					</svg>
+					Create Task
+				</button>
+			</div>
+		</div>
+
+		<!-- BMC Tasks Table -->
+		<div id="task-content">
+			@BMCTaskTableContent(taskData)
 		</div>
 	</div>
 }
@@ -733,6 +1040,16 @@ templ Scripts() {
 			const bmcDropdownMenu = document.getElementById('dropdown-example');
 
 			if (bmcDropdownButton && bmcDropdownMenu) {
+				// Check if current page is a BMC page and keep dropdown open
+				const currentPath = window.location.pathname;
+				const isBMCPage = currentPath.startsWith('/bmc/');
+				
+				if (isBMCPage) {
+					bmcDropdownMenu.classList.remove('hidden');
+					const arrow = bmcDropdownButton.querySelector('svg:last-child');
+					arrow.style.transform = 'rotate(180deg)';
+				}
+
 				bmcDropdownButton.addEventListener('click', () => {
 					bmcDropdownMenu.classList.toggle('hidden');
 
@@ -745,12 +1062,25 @@ templ Scripts() {
 					}
 				});
 
-				// Close BMC dropdown when clicking outside
+				// Close BMC dropdown when clicking outside (but not if we're on a BMC page)
 				document.addEventListener('click', (event) => {
 					if (!bmcDropdownButton.contains(event.target) && !bmcDropdownMenu.contains(event.target)) {
-						bmcDropdownMenu.classList.add('hidden');
-						const arrow = bmcDropdownButton.querySelector('svg:last-child');
-						arrow.style.transform = 'rotate(0deg)';
+						// Only close if we're not on a BMC page
+						if (!currentPath.startsWith('/bmc/')) {
+							bmcDropdownMenu.classList.add('hidden');
+							const arrow = bmcDropdownButton.querySelector('svg:last-child');
+							arrow.style.transform = 'rotate(0deg)';
+						}
+					}
+				});
+
+				// Highlight active BMC navigation item
+				const bmcNavItems = document.querySelectorAll('.bmc-nav-item');
+				bmcNavItems.forEach(item => {
+					const href = item.getAttribute('data-href');
+					if (href === currentPath) {
+						item.classList.add('bg-teal-100', 'dark:bg-teal-900', 'text-teal-700', 'dark:text-teal-300');
+						item.classList.remove('text-gray-700', 'dark:text-gray-300');
 					}
 				});
 			}
@@ -902,4 +1232,477 @@ templ Scripts() {
 			});
 		});
 	</script>
+}
+
+templ WorkflowTableContent(workflowData WorkflowPageData) {
+	<!-- Workflow Table Content -->
+	<div class="flex flex-col">
+		<div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+			<div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+				<div class="shadow overflow-hidden border-b border-gray-200 dark:border-darkBorderSoft sm:rounded-lg">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-darkBorderSoft">
+						<thead class="bg-gray-50 dark:bg-darkNav">
+							<tr>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									<input type="checkbox" id="selectAll" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Workflow
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Namespace
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Template
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									State
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Task
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Created At
+								</th>
+								<th scope="col" class="relative px-6 py-3">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white dark:bg-darkBg divide-y divide-gray-200 dark:divide-darkBorderSoft">
+							for _, wf := range workflowData.Workflows {
+							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input type="checkbox" class="row-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="flex items-center">
+										<div class="flex-shrink-0 h-10 w-10">
+											<div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+												@templ.Raw(workflowsIcon())
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">{ wf.Name }</div>
+										</div>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ wf.Namespace }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ wf.TemplateRef }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									if wf.State == "SUCCESS" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+											{ wf.State }
+										</span>
+									} else if wf.State == "RUNNING" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+											{ wf.State }
+										</span>
+									} else if wf.State == "FAILED" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+											{ wf.State }
+										</span>
+									} else {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+											{ wf.State }
+										</span>
+									}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ wf.Task }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ wf.CreatedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+										Edit
+									</button>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ TemplateTableContent(templateData TemplatePageData) {
+	<!-- Template Table Content -->
+	<div class="flex flex-col">
+		<div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+			<div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+				<div class="shadow overflow-hidden border-b border-gray-200 dark:border-darkBorderSoft sm:rounded-lg">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-darkBorderSoft">
+						<thead class="bg-gray-50 dark:bg-darkNav">
+							<tr>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									<input type="checkbox" id="selectAll" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Template
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Namespace
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									State
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Created At
+								</th>
+								<th scope="col" class="relative px-6 py-3">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white dark:bg-darkBg divide-y divide-gray-200 dark:divide-darkBorderSoft">
+							for _, tpl := range templateData.Templates {
+							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input type="checkbox" class="row-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="flex items-center">
+										<div class="flex-shrink-0 h-10 w-10">
+											<div class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+												@templ.Raw(templatesIcon())
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">{ tpl.Name }</div>
+										</div>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ tpl.Namespace }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									if tpl.State == "Ready" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+											{ tpl.State }
+										</span>
+									} else {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+											{ tpl.State }
+										</span>
+									}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ tpl.CreatedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+										Edit
+									</button>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ BMCMachineTableContent(machineData BMCMachinePageData) {
+	<!-- BMC Machine Table Content -->
+	<div class="flex flex-col">
+		<div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+			<div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+				<div class="shadow overflow-hidden border-b border-gray-200 dark:border-darkBorderSoft sm:rounded-lg">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-darkBorderSoft">
+						<thead class="bg-gray-50 dark:bg-darkNav">
+							<tr>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									<input type="checkbox" id="selectAll" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Machine
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Namespace
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Power State
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Contactable
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Endpoint
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Created At
+								</th>
+								<th scope="col" class="relative px-6 py-3">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white dark:bg-darkBg divide-y divide-gray-200 dark:divide-darkBorderSoft">
+							for _, machine := range machineData.Machines {
+							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input type="checkbox" class="row-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="flex items-center">
+										<div class="flex-shrink-0 h-10 w-10">
+											<div class="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+												@templ.Raw(bmcIcon())
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">{ machine.Name }</div>
+										</div>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ machine.Namespace }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									if machine.PowerState == "on" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+											{ machine.PowerState }
+										</span>
+									} else if machine.PowerState == "off" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+											{ machine.PowerState }
+										</span>
+									} else {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+											{ machine.PowerState }
+										</span>
+									}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ machine.Contactable }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ machine.Endpoint }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ machine.CreatedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+										Edit
+									</button>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ BMCJobTableContent(jobData BMCJobPageData) {
+	<!-- BMC Job Table Content -->
+	<div class="flex flex-col">
+		<div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+			<div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+				<div class="shadow overflow-hidden border-b border-gray-200 dark:border-darkBorderSoft sm:rounded-lg">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-darkBorderSoft">
+						<thead class="bg-gray-50 dark:bg-darkNav">
+							<tr>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									<input type="checkbox" id="selectAll" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Job
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Namespace
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Machine
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Status
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Completed At
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Created At
+								</th>
+								<th scope="col" class="relative px-6 py-3">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white dark:bg-darkBg divide-y divide-gray-200 dark:divide-darkBorderSoft">
+							for _, job := range jobData.Jobs {
+							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input type="checkbox" class="row-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="flex items-center">
+										<div class="flex-shrink-0 h-10 w-10">
+											<div class="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+												@templ.Raw(jobsIcon())
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">{ job.Name }</div>
+										</div>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ job.Namespace }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ job.MachineRef }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									if job.Status == "Completed" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+											{ job.Status }
+										</span>
+									} else if job.Status == "Running" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+											{ job.Status }
+										</span>
+									} else if job.Status == "Failed" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+											{ job.Status }
+										</span>
+									} else {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+											{ job.Status }
+										</span>
+									}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ job.CompletedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ job.CreatedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+										Edit
+									</button>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ BMCTaskTableContent(taskData BMCTaskPageData) {
+	<!-- BMC Task Table Content -->
+	<div class="flex flex-col">
+		<div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+			<div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+				<div class="shadow overflow-hidden border-b border-gray-200 dark:border-darkBorderSoft sm:rounded-lg">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-darkBorderSoft">
+						<thead class="bg-gray-50 dark:bg-darkNav">
+							<tr>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									<input type="checkbox" id="selectAll" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Task
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Namespace
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Job Reference
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Type
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Status
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Completed At
+								</th>
+								<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+									Created At
+								</th>
+								<th scope="col" class="relative px-6 py-3">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white dark:bg-darkBg divide-y divide-gray-200 dark:divide-darkBorderSoft">
+							for _, task := range taskData.Tasks {
+							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input type="checkbox" class="row-checkbox h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-darkBorder rounded dark:bg-darkBg" />
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div class="flex items-center">
+										<div class="flex-shrink-0 h-10 w-10">
+											<div class="h-10 w-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
+												@templ.Raw(tasksIcon())
+											</div>
+										</div>
+										<div class="ml-4">
+											<div class="text-sm font-medium text-gray-900 dark:text-white">{ task.Name }</div>
+										</div>
+									</div>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ task.Namespace }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ task.JobRef }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+									{ task.TaskType }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap">
+									if task.Status == "Completed" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+											{ task.Status }
+										</span>
+									} else if task.Status == "Failed" {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+											{ task.Status }
+										</span>
+									} else {
+										<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+											{ task.Status }
+										</span>
+									}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ task.CompletedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+									{ task.CreatedAt }
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+									<button class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+										Edit
+									</button>
+								</td>
+							</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
 }
