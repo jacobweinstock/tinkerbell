@@ -43,6 +43,7 @@ const (
 	defaultTinkControllerProbePort   = 8081
 	defaultTinkServerPort            = 42113
 	defaultTootlesPort               = 50061
+	defaultWireguardPort             = 51820
 )
 
 var (
@@ -121,24 +122,28 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 		},
 	}
 
+	wgc := &flag.WireguardConfig{}
+
 	// order here determines the help output.
-	top := ff.NewFlagSet("smee - DHCP and iPXE service")
+	bottom := ff.NewFlagSet("smee - DHCP and iPXE service")
 	if embeddedFlagSet != nil {
-		top = ff.NewFlagSet("smee - DHCP and iPXE service").SetParent(embeddedFlagSet)
+		bottom = ff.NewFlagSet("smee - DHCP and iPXE service").SetParent(embeddedFlagSet)
 	}
-	sfs := ff.NewFlagSet("smee - DHCP and iPXE service").SetParent(top)
+	sfs := ff.NewFlagSet("smee - DHCP and iPXE service").SetParent(bottom)
 	hfs := ff.NewFlagSet("tootles - Metadata service").SetParent(sfs)
 	tfs := ff.NewFlagSet("tink server - Workflow service").SetParent(hfs)
 	cfs := ff.NewFlagSet("tink controller - Workflow controller").SetParent(tfs)
 	rfs := ff.NewFlagSet("rufio - BMC controller").SetParent(cfs)
 	ssfs := ff.NewFlagSet("secondstar - SSH over serial service").SetParent(rfs)
-	gfs := ff.NewFlagSet("globals").SetParent(ssfs)
+	wgfs := ff.NewFlagSet("wireguard - wireguard tunnel").SetParent(ssfs)
+	gfs := ff.NewFlagSet("globals").SetParent(wgfs)
 	flag.RegisterSmeeFlags(&flag.Set{FlagSet: sfs}, s)
 	flag.RegisterTootlesFlags(&flag.Set{FlagSet: hfs}, h)
 	flag.RegisterTinkServerFlags(&flag.Set{FlagSet: tfs}, ts)
 	flag.RegisterTinkControllerFlags(&flag.Set{FlagSet: cfs}, tc)
 	flag.RegisterRufioFlags(&flag.Set{FlagSet: rfs}, rc)
 	flag.RegisterSecondStarFlags(&flag.Set{FlagSet: ssfs}, ssc)
+	flag.RegisterWireguardFlags(&flag.Set{FlagSet: wgfs}, wgc)
 	flag.RegisterGlobal(&flag.Set{FlagSet: gfs}, globals)
 	if embeddedApiserverExecute != nil && embeddedFlagSet != nil {
 		// This way the embedded flags only show up when the embedded services have been compiled in.
@@ -208,6 +213,11 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 			return fmt.Errorf("failed to load TLS credentials for Tink Server gRPC: %w", err)
 		}
 		ts.Config.TLS.Cert = creds
+		nl, err := wgc.NewTunnelListener(ctx, log)
+		if err != nil {
+			return fmt.Errorf("failed to get wireguard net listener: %w", err)
+		}
+		ts.Config.Listener = nl
 	}
 
 	// Tink Controller

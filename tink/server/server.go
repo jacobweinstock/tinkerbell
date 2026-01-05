@@ -24,6 +24,7 @@ type Config struct {
 	Logger       logr.Logger
 	Auto         AutoCapabilities
 	TLS          TLS
+	Listener     net.Listener
 }
 
 type AutoCapabilities struct {
@@ -92,6 +93,12 @@ func WithTLSCert(cert credentials.TransportCredentials) Option {
 	}
 }
 
+func WithListener(n net.Listener) Option {
+	return func(c *Config) {
+		c.Listener = n
+	}
+}
+
 func NewConfig(opts ...Option) *Config {
 	c := &Config{}
 	for _, opt := range opts {
@@ -134,10 +141,13 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	reflection.Register(gs)
 	grpcprometheus.Register(gs)
 
-	n := net.ListenConfig{}
-	lis, err := n.Listen(ctx, "tcp", c.BindAddrPort.String())
-	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
+	if c.Listener == nil {
+		n := net.ListenConfig{}
+		if lis, err := n.Listen(ctx, "tcp", c.BindAddrPort.String()); err != nil {
+			return fmt.Errorf("failed to listen: %w", err)
+		} else {
+			c.Listener = lis
+		}
 	}
 
 	go func() {
@@ -154,7 +164,7 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	}()
 
 	log.Info("starting gRPC server", "bindAddr", c.BindAddrPort.String())
-	if err := gs.Serve(lis); err != nil {
+	if err := gs.Serve(c.Listener); err != nil {
 		log.Error(err, "failed to serve")
 		return err
 	}

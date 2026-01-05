@@ -1,6 +1,6 @@
 module github.com/tinkerbell/tinkerbell
 
-go 1.24.1
+go 1.25
 
 require (
 	dario.cat/mergo v1.0.2
@@ -33,6 +33,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
+	github.com/tailscale/wireguard-go v0.0.0-20251121194102-c6fd943bb437
 	github.com/tinkerbell/tinkerbell/api v0.0.0 // v0.0.0 is used as a placeholder because a replace directive is used to point to the local api directory
 	github.com/vishvananda/netlink v1.3.1
 	go.etcd.io/etcd/server/v3 v3.6.6
@@ -242,6 +243,7 @@ require (
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
+	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
@@ -250,6 +252,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gvisor.dev/gvisor v0.0.0-20230927004350-cbd86285d259 // indirect
 	howett.net/plist v1.0.2-0.20250314012144-ee69052608d9 // indirect
 	k8s.io/apiserver v0.33.4 // indirect
 	k8s.io/cloud-provider v0.33.4 // indirect
