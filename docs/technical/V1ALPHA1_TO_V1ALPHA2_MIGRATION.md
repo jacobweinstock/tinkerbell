@@ -11,8 +11,8 @@ Legend: `not-started`, `in-progress`, `done`, `blocked`.
 
 | Step | Description                                                                          | Status      | Notes / Commit |
 |------|--------------------------------------------------------------------------------------|-------------|----------------|
-| 0    | Save plan + checkpoint baseline                                                      | done        | this commit    |
-| 1    | `pkg/migrate/transform/` — pure v1alpha1↔v1alpha2 transform functions                | not-started |                |
+| 0    | Save plan + checkpoint baseline                                                      | done        | b39047af       |
+| 1    | `pkg/migrate/transform/` — pure v1alpha1↔v1alpha2 transform functions                | in-progress |                |
 | 2    | `pkg/migrate/runner/` — streaming runner with resumable `state.json`                 | not-started |                |
 | 3    | `pkg/migrate/report/` — `--report json` and `--report tui` renderers                 | not-started |                |
 | 4    | `crd` package: additive vs final modes; `DeleteCRDs`                                 | not-started |                |
