@@ -43,15 +43,30 @@ Legend: `not-started`, `in-progress`, `done`, `blocked`.
 
 ## Kind inventory
 
-| v1alpha1 CRD                       | v1alpha2 CRD                  | Mechanism                  |
-|------------------------------------|-------------------------------|----------------------------|
-| `tinkerbell.org/hardware`          | `tinkerbell.org/hardware`     | 1:1, same CRD              |
-| `tinkerbell.org/workflows`         | `tinkerbell.org/workflows`    | 1:1, same CRD              |
-| `bmc.tinkerbell.org/jobs`          | `bmc.tinkerbell.org/jobs`     | 1:1, same CRD              |
-| `bmc.tinkerbell.org/machines`      | `tinkerbell.org/bmcs`         | 1:1, renamed CRD           |
-| `tinkerbell.org/workflowrulesets`  | `tinkerbell.org/policies`     | 1:1, renamed CRD           |
-| `tinkerbell.org/templates`         | `tinkerbell.org/tasks`        | 1:N split, renamed CRD     |
-| `bmc.tinkerbell.org/tasks`         | —                             | drop (no successor)        |
+Kinds are classified by **disposition**:
+
+- **apply** — declarative spec; export, transform, and apply to the cluster.
+- **archive** — execution record / live runtime state; export and
+  transform to disk for audit and forensics, but **never apply**.
+  Re-applying these would re-trigger execution (Workflow) or restart
+  in-flight BMC operations (BMC Job).
+- **drop** — no v1alpha2 successor; log and discard.
+
+| v1alpha1 CRD                       | v1alpha2 CRD                  | Mechanism              | Disposition |
+|------------------------------------|-------------------------------|------------------------|-------------|
+| `tinkerbell.org/hardware`          | `tinkerbell.org/hardware`     | 1:1, same CRD          | apply       |
+| `tinkerbell.org/templates`         | `tinkerbell.org/tasks`        | 1:N split, renamed CRD | apply       |
+| `tinkerbell.org/workflowrulesets`  | `tinkerbell.org/policies`     | 1:1, renamed CRD       | apply       |
+| `bmc.tinkerbell.org/machines`      | `tinkerbell.org/bmcs`         | 1:1, renamed CRD       | apply       |
+| `tinkerbell.org/workflows`         | `tinkerbell.org/workflows`    | 1:1, same CRD          | archive     |
+| `bmc.tinkerbell.org/jobs`          | `bmc.tinkerbell.org/jobs`     | 1:1, same CRD          | archive     |
+| `bmc.tinkerbell.org/tasks`         | —                             | no successor           | drop        |
+
+For the archived kinds, transformed v1alpha2 YAML on disk is
+**reference material only**. Operators wanting historical visibility
+can inspect `target-v1alpha2/workflow/` and `target-v1alpha2/bmcjob/`;
+they can also choose to manually apply selected files post-migration
+if they understand the consequences (re-execution).
 
 ## Subcommand model
 
@@ -85,25 +100,30 @@ Flags:
   state.json                       # phase tracker; atomic-rename updates
   source-v1alpha1/
     hardware/<ns>__<name>.yaml
-    workflow/<ns>__<name>.yaml
     template/<ns>__<name>.yaml
     workflowruleset/<ns>__<name>.yaml
     bmcmachine/<ns>__<name>.yaml
-    bmcjob/<ns>__<name>.yaml
-    bmctask/<ns>__<name>.yaml
+    workflow/<ns>__<name>.yaml          # archive only
+    bmcjob/<ns>__<name>.yaml            # archive only
+    bmctask/<ns>__<name>.yaml           # dropped; kept for audit
   target-v1alpha2/
     hardware/<ns>__<name>.yaml
-    workflow/<ns>__<name>.yaml
     task/<ns>__<tmplname>__<idx>.yaml
     policy/<ns>__<name>.yaml
     bmc/<ns>__<name>.yaml
-    bmcjob/<ns>__<name>.yaml
+    archive/
+      workflow/<ns>__<name>.yaml        # transformed, never applied
+      bmcjob/<ns>__<name>.yaml          # transformed, never applied
   logs/
     export.log
     transform.log
     apply.log
     crd.log
 ```
+
+The `target-v1alpha2/archive/` subtree exists so a glob-walk in the
+apply phase (`target-v1alpha2/*/*.yaml`) cannot accidentally pick up
+archive-only files.
 
 ## `state.json`
 
@@ -132,9 +152,9 @@ rename).
 | # | Phase                  | Reversible?  | Description |
 |---|------------------------|--------------|-------------|
 | 1 | `export`               | yes          | Paged LIST every v1alpha1 kind; write each object to `source-v1alpha1/<kind>/<ns>__<name>.yaml`. Memory ceiling = one page (500). Per-file write = `O_EXCL` + rename-from-tmp. Skip if file exists and uid matches. |
-| 2 | `transform`            | yes          | Walk `source-v1alpha1/<kind>/`, decode → typed transform → encode to `target-v1alpha2/<targetkind>/`. One file in memory at a time. Template→Tasks fan-out. `bmc.Task`: log and discard. |
+| 2 | `transform`            | yes          | Walk `source-v1alpha1/<kind>/`, decode → typed transform → encode. Apply-disposition kinds go to `target-v1alpha2/<kind>/`; archive-disposition (workflow, bmcjob) go to `target-v1alpha2/archive/<kind>/`. One file in memory at a time. Template→Tasks fan-out. `bmc.Task`: log and discard. |
 | 3 | `apply_crds_additive`  | yes          | Apply v1alpha2 CRDs in additive mode: shared-name CRDs gain v1alpha2 (storage=true) while keeping v1alpha1 served; renamed CRDs created fresh. |
-| 4 | `apply_objects`        | partially    | Server-side apply every file in `target-v1alpha2/` with field manager `tinkerbell-migrate`. Per-file completion recorded in `state.json`. |
+| 4 | `apply_objects`        | partially    | Server-side apply files under `target-v1alpha2/<kind>/` (hardware, task, policy, bmc) with field manager `tinkerbell-migrate`. **Files under `target-v1alpha2/archive/` are never applied.** Per-file completion recorded in `state.json`. |
 | 5 | `delete_old_crds`      | **no**       | Delete `templates.tinkerbell.org`, `workflowrulesets.tinkerbell.org`, `machines.bmc.tinkerbell.org`, `tasks.bmc.tinkerbell.org`. Apiserver GCs CRs; workdir is the only recovery copy. |
 | 6 | `apply_crds_final`     | **no**       | Re-apply v1alpha2 CRDs in final mode: shared-name CRDs lose v1alpha1 from `spec.versions`. |
 | 7 | `report`               | —            | Print final report (TUI or JSON). |
@@ -169,9 +189,21 @@ Single JSON document to stdout. Schema documented in
     {
       "source": "hardware.tinkerbell.org/v1alpha1",
       "target": "hardware.tinkerbell.org/v1alpha2",
+      "disposition": "apply",
       "exported": 1247,
       "transformed": 1247,
       "applied": 1247,
+      "skipped_resume": 0,
+      "failed": 0,
+      "errors": []
+    },
+    {
+      "source": "workflows.tinkerbell.org/v1alpha1",
+      "target": "workflows.tinkerbell.org/v1alpha2",
+      "disposition": "archive",
+      "exported": 312,
+      "transformed": 312,
+      "applied": 0,
       "skipped_resume": 0,
       "failed": 0,
       "errors": []
@@ -191,10 +223,13 @@ terminal-respecting layout:
 
 - Header panel: workdir, wall time, overall outcome.
 - One-row-per-kind table with columns
-  `source kind | target kind | exported | transformed | applied | skipped | failed`.
-  Right-aligned numeric columns. Color cues when `failed > 0`. **No
-  `->` arrows** — the source/target relationship is encoded as two
-  adjacent columns.
+  `source kind | target kind | disposition | exported | transformed | applied | skipped | failed`.
+  Right-aligned numeric columns. `applied` column shows `—` for
+  archive- and drop-disposition rows. Color cues when `failed > 0`.
+  **No `->` arrows** — the source/target relationship is encoded as
+  two adjacent columns.
+- An "Archived" panel listing the kinds whose transformed files were
+  written but not applied, with their counts and on-disk paths.
 - A "Discarded" panel for `bmc.Task` showing count + reason.
 - A "Next steps" panel with a single concrete instruction (restart
   command, or specific resume guidance on partial completion).
