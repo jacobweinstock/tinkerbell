@@ -53,11 +53,11 @@ tasks:
 		},
 		Spec: v2.TaskSpec{
 			Actions: []v2.Action{{
-				Name:    "stream",
-				Image:   "quay.io/tinkerbell/actions/image2disk:v1.0.0",
-				Command: "/usr/bin/image2disk",
-				Args:    []string{"--device", "/dev/sda"},
-				EnvVars: []v2.EnvVar{{Key: "IMG_URL", Value: "https://example.com/disk.img"}},
+				Name:           "stream",
+				Image:          "quay.io/tinkerbell/actions/image2disk:v1.0.0",
+				Command:        "/usr/bin/image2disk",
+				Args:           []string{"--device", "/dev/sda"},
+				EnvVars:        []v2.EnvVar{{Key: "IMG_URL", Value: "https://example.com/disk.img"}},
 				TimeoutSeconds: &timeout,
 			}},
 			EnvVars: []v2.EnvVar{{Key: "DEBUG", Value: "true"}},

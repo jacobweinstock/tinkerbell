@@ -10,9 +10,9 @@
 // docs/technical/V1ALPHA1_TO_V1ALPHA2_MIGRATION.md:
 //
 //   - apply:   Hardware, Template (1:N split to Task), WorkflowRuleSet
-//              (renamed to Policy), bmc.Machine (renamed to BMC).
+//     (renamed to Policy), bmc.Machine (renamed to BMC).
 //   - archive: Workflow (spec transformed; status dropped). bmc.Job is
-//              copied verbatim by the runner and has no transform here.
+//     copied verbatim by the runner and has no transform here.
 //   - drop:    bmc.Task — discarded by the runner.
 package transform
 
