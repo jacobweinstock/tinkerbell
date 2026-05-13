@@ -32,13 +32,13 @@ const (
 // Report is the final summary of a migrate run. The JSON shape is
 // stable and documented in docs/technical/V1ALPHA1_TO_V1ALPHA2_MIGRATION.md.
 type Report struct {
-	Workdir     string             `json:"workdir"`
-	StartedAt   time.Time          `json:"started_at,omitempty"`
-	CompletedAt time.Time          `json:"completed_at,omitempty"`
-	Outcome     Outcome            `json:"outcome"`
-	Phases      runner.PhaseState  `json:"phases"`
-	Kinds       []KindReport       `json:"kinds"`
-	Discarded   []DiscardedReport  `json:"discarded,omitempty"`
+	Workdir     string            `json:"workdir"`
+	StartedAt   time.Time         `json:"started_at,omitempty"`
+	CompletedAt time.Time         `json:"completed_at,omitempty"`
+	Outcome     Outcome           `json:"outcome"`
+	Phases      runner.PhaseState `json:"phases"`
+	Kinds       []KindReport      `json:"kinds"`
+	Discarded   []DiscardedReport `json:"discarded,omitempty"`
 }
 
 // KindReport is one row of the per-kind table. Applied is zero for

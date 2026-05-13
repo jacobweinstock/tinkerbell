@@ -232,9 +232,9 @@ func TestRunnerDryRunSkipsApply(t *testing.T) {
 
 func TestParseObjectFilename(t *testing.T) {
 	cases := []struct {
-		in      string
-		ns, nm  string
-		ok      bool
+		in     string
+		ns, nm string
+		ok     bool
 	}{
 		{"ns1__node-a.yaml", "ns1", "node-a", true},
 		{"__cluster-scoped.yaml", "", "cluster-scoped", true},
