@@ -38,11 +38,11 @@ type Config struct {
 // re-instantiate and Run a Runner against the same workdir; resume is
 // handled automatically via state.json.
 type Runner struct {
-	cfg     Config
-	layout  Layout
-	client  ClusterClient
-	crds    CRDInstaller
-	log     logr.Logger
+	cfg    Config
+	layout Layout
+	client ClusterClient
+	crds   CRDInstaller
+	log    logr.Logger
 }
 
 // New builds a Runner from cfg. It validates the configuration but
