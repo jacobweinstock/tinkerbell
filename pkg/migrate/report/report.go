@@ -78,13 +78,15 @@ var discardReason = map[string]string{
 }
 
 // Build assembles a Report from a finished (or partially finished)
-// runner state. The completedAt argument is the wall-clock instant
-// the run ended; pass time.Now() at call sites unless overriding for
-// tests.
-func Build(state *runner.State, completedAt time.Time) Report {
+// runner state. startedAt and completedAt bound the wall-clock
+// interval shown in the report header; callers typically pass the
+// instant Run was invoked (not state.Started, which is preserved
+// across resumes and would inflate the elapsed time of a quick
+// resume to "time since first run").
+func Build(state *runner.State, startedAt, completedAt time.Time) Report {
 	r := Report{
 		Workdir:     state.Workdir,
-		StartedAt:   state.Started,
+		StartedAt:   startedAt,
 		CompletedAt: completedAt,
 		Phases:      state.Phases,
 	}

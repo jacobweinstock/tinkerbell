@@ -44,7 +44,7 @@ func TestBuildSuccess(t *testing.T) {
 	s.Count("bmctask").Discarded = 7
 	end := s.Started.Add(2 * time.Minute)
 
-	r := Build(s, end)
+	r := Build(s, s.Started, end)
 	if r.Outcome != OutcomeSuccess {
 		t.Fatalf("outcome = %q, want success", r.Outcome)
 	}
@@ -85,7 +85,7 @@ func TestBuildSuccess(t *testing.T) {
 func TestBuildPartial(t *testing.T) {
 	s := fullyDoneState()
 	s.Phases.Transform["hardware"] = runner.PhaseInProgress
-	r := Build(s, time.Now())
+	r := Build(s, s.Started, time.Now())
 	if r.Outcome != OutcomePartial {
 		t.Fatalf("outcome = %q, want partial", r.Outcome)
 	}
@@ -94,7 +94,7 @@ func TestBuildPartial(t *testing.T) {
 func TestBuildFailed(t *testing.T) {
 	s := fullyDoneState()
 	s.Count("hardware").Failed = 3
-	r := Build(s, time.Now())
+	r := Build(s, s.Started, time.Now())
 	if r.Outcome != OutcomeFailed {
 		t.Fatalf("outcome = %q, want failed", r.Outcome)
 	}
@@ -105,7 +105,7 @@ func TestWriteJSON(t *testing.T) {
 	s.Count("hardware").Exported = 1
 	s.Count("hardware").Transformed = 1
 	s.Count("hardware").Applied = 1
-	r := Build(s, s.Started.Add(time.Second))
+	r := Build(s, s.Started, s.Started.Add(time.Second))
 
 	var buf bytes.Buffer
 	if err := WriteJSON(&buf, r); err != nil {
@@ -132,7 +132,7 @@ func TestWriteText(t *testing.T) {
 	s.Count("workflow").Exported = 2
 	s.Count("workflow").Transformed = 2
 	s.Count("bmctask").Discarded = 1
-	r := Build(s, s.Started.Add(30*time.Second))
+	r := Build(s, s.Started, s.Started.Add(30*time.Second))
 
 	var buf bytes.Buffer
 	if err := WriteText(&buf, r); err != nil {
@@ -140,13 +140,13 @@ func TestWriteText(t *testing.T) {
 	}
 	out := buf.String()
 	for _, want := range []string{
-		"outcome:   success",
+		"outcome success",
 		"hardware.tinkerbell.org/v1alpha1",
 		"hardware.tinkerbell.org/v1alpha2",
 		"Archived",
-		"Discarded:",
+		"Discarded",
 		"no v1alpha2 successor",
-		"Next steps:",
+		"Next steps",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("text output missing %q\n--- output ---\n%s", want, out)

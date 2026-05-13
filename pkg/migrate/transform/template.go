@@ -61,8 +61,7 @@ type templateAction struct {
 //     unix path. When the first element is not a unix path the entire
 //     command slice is preserved in Args and Command is left empty.
 //   - timeout: int64 (seconds) -> TimeoutSeconds *int64
-//   - environment: map[string]string -> EnvVars []EnvVar (sorted by key
-//     for determinism)
+//   - environment: map[string]string -> Env map[string]string
 //   - pid: string -> Namespaces.PID
 //
 // Fields dropped (no v2 equivalent): on-timeout, on-failure.
@@ -114,7 +113,7 @@ func Template(src *v1.Template) ([]*v2.Task, error) {
 			},
 			Spec: v2.TaskSpec{
 				Actions: convertTemplateActions(t.Actions),
-				EnvVars: mapToEnvVars(t.Environment),
+				Env:     t.Environment,
 				Volumes: stringsToVolumes(t.Volumes),
 			},
 		}
@@ -132,7 +131,7 @@ func convertTemplateActions(in []templateAction) []v2.Action {
 			Image:   a.Image,
 			Command: cmd,
 			Args:    args,
-			EnvVars: mapToEnvVars(a.Environment),
+			Env:     a.Environment,
 			Volumes: stringsToVolumes(a.Volumes),
 		}
 		if a.Timeout > 0 {

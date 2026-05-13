@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
@@ -26,7 +28,9 @@ const fieldManager = "tinkerbell-migrate"
 // (skipping target-v1alpha2/archive/) to the cluster using
 // server-side apply. Per-kind state is recorded in
 // PhaseState.ApplyObjects.
-func (r *Runner) runApplyObjects(ctx context.Context, state *State) error {
+func (r *Runner) runApplyObjects(ctx context.Context, state *State) (rerr error) {
+	r.progress.PhaseStart("apply_objects")
+	defer func() { r.progress.PhaseEnd("apply_objects", rerr) }()
 	for _, target := range ApplyKinds() {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -41,12 +45,14 @@ func (r *Runner) runApplyObjects(ctx context.Context, state *State) error {
 		if err := r.applyKind(ctx, state, target); err != nil {
 			state.SetApplyObjects(target, PhaseFailed)
 			_ = state.Save(r.layout)
+			r.progress.KindEnd("apply_objects", target, err)
 			return fmt.Errorf("apply %s: %w", target, err)
 		}
 		state.SetApplyObjects(target, PhaseDone)
 		if err := state.Save(r.layout); err != nil {
 			return err
 		}
+		r.progress.KindEnd("apply_objects", target, nil)
 	}
 	return nil
 }
@@ -61,6 +67,7 @@ func (r *Runner) applyKind(ctx context.Context, state *State, target string) err
 	if err != nil {
 		return err
 	}
+	r.progress.KindStart("apply_objects", target, len(files))
 	// applyKind state is per target-kind, not per source-kind. Find the
 	// corresponding source kind so per-kind counts stay coherent with
 	// the transform phase.
@@ -72,23 +79,42 @@ func (r *Runner) applyKind(ctx context.Context, state *State, target string) err
 		}
 	}
 	counts := state.Count(sourceKind)
+	// Per-object SSA is the dominant cost of this phase. Run up to
+	// r.concurrency requests in flight at once. counts is shared so
+	// guard mutations with a mutex; progress.KindItem is invoked from
+	// worker goroutines and is expected to be safe (the bubbletea
+	// program serialises events through its channel).
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(r.concurrency)
+	var mu sync.Mutex
 	for _, name := range files {
 		path := filepath.Join(dir, name)
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("read %s: %w", path, err)
-		}
-		obj, err := decodeUnstructured(data)
-		if err != nil {
-			return fmt.Errorf("decode %s: %w", path, err)
-		}
-		if err := r.client.ServerSideApply(ctx, gvr, true, obj, fieldManager); err != nil {
-			counts.Failed++
-			return fmt.Errorf("apply %s: %w", path, err)
-		}
-		counts.Applied++
+		g.Go(func() error {
+			if err := gctx.Err(); err != nil {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", path, err)
+			}
+			obj, err := decodeUnstructured(data)
+			if err != nil {
+				return fmt.Errorf("decode %s: %w", path, err)
+			}
+			if err := r.client.ServerSideApply(gctx, gvr, true, obj, fieldManager); err != nil {
+				mu.Lock()
+				counts.Failed++
+				mu.Unlock()
+				return fmt.Errorf("apply %s: %w", path, err)
+			}
+			mu.Lock()
+			counts.Applied++
+			mu.Unlock()
+			r.progress.KindItem("apply_objects", target)
+			return nil
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func decodeUnstructured(data []byte) (*unstructured.Unstructured, error) {

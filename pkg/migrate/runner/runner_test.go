@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +24,10 @@ type fakeCall struct {
 
 // fakeClient is an in-memory ClusterClient for tests.
 type fakeClient struct {
+	mu      sync.Mutex
 	items   map[schema.GroupVersionResource][]*unstructured.Unstructured
 	applied []fakeCall
+	deleted []fakeCall
 }
 
 func (f *fakeClient) List(_ context.Context, gvr schema.GroupVersionResource, _ string, fn func(*unstructured.Unstructured) error) error {
@@ -37,10 +40,22 @@ func (f *fakeClient) List(_ context.Context, gvr schema.GroupVersionResource, _ 
 }
 
 func (f *fakeClient) ServerSideApply(_ context.Context, gvr schema.GroupVersionResource, namespaced bool, obj *unstructured.Unstructured, fm string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.applied = append(f.applied, fakeCall{
 		gvr: gvr, namespaced: namespaced,
 		namespace: obj.GetNamespace(), name: obj.GetName(),
 		fieldManager: fm,
+	})
+	return nil
+}
+
+func (f *fakeClient) Delete(_ context.Context, gvr schema.GroupVersionResource, namespaced bool, namespace, name string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.deleted = append(f.deleted, fakeCall{
+		gvr: gvr, namespaced: namespaced,
+		namespace: namespace, name: name,
 	})
 	return nil
 }
@@ -135,10 +150,16 @@ func TestRunnerEndToEnd(t *testing.T) {
 	hardwareGVR := schema.GroupVersionResource{
 		Group: "tinkerbell.org", Version: "v1alpha1", Resource: "hardware",
 	}
+	bmcJobGVR := schema.GroupVersionResource{
+		Group: "bmc.tinkerbell.org", Version: "v1alpha1", Resource: "jobs",
+	}
 	fc := &fakeClient{items: map[schema.GroupVersionResource][]*unstructured.Unstructured{
 		hardwareGVR: {
 			mustUnstructured(t, "tinkerbell.org/v1alpha1", "Hardware", "ns1", "node-a", nil),
 			mustUnstructured(t, "tinkerbell.org/v1alpha1", "Hardware", "ns1", "node-b", nil),
+		},
+		bmcJobGVR: {
+			mustUnstructured(t, "bmc.tinkerbell.org/v1alpha1", "Job", "ns1", "job-a", nil),
 		},
 	}}
 	r, err := New(Config{Workdir: dir, Client: fc})
@@ -204,6 +225,23 @@ func TestRunnerEndToEnd(t *testing.T) {
 		t.Errorf("crd phase stubs not done: %#v", state.Phases)
 	}
 
+	// Archived bmcjob v1alpha1 CR was deleted from the cluster (archive
+	// kinds are not applied, but their source CRs must be removed before
+	// apply_crds_final drops v1alpha1 from the shared CRD).
+	var deletedBMCJob bool
+	for _, d := range fc.deleted {
+		if d.gvr == bmcJobGVR && d.namespace == "ns1" && d.name == "job-a" {
+			deletedBMCJob = true
+			break
+		}
+	}
+	if !deletedBMCJob {
+		t.Fatalf("expected bmcjob v1alpha1 delete, got %+v", fc.deleted)
+	}
+	if got := state.Phases.DeleteArchivedObjects["bmcjob"]; got != PhaseDone {
+		t.Errorf("delete_archived_objects bmcjob = %q, want done", got)
+	}
+
 	// Resume: second Run is a no-op.
 	state2, err := r.Run(context.Background())
 	if err != nil {
@@ -211,6 +249,9 @@ func TestRunnerEndToEnd(t *testing.T) {
 	}
 	if len(fc.applied) != 2 {
 		t.Fatalf("resume re-applied: %d", len(fc.applied))
+	}
+	if len(fc.deleted) != 1 {
+		t.Fatalf("resume re-deleted: %d", len(fc.deleted))
 	}
 	_ = state2
 }

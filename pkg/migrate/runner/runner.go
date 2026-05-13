@@ -28,9 +28,19 @@ type Config struct {
 	// A discard logger is used when zero-valued.
 	Logger logr.Logger
 
+	// Progress receives live phase / per-kind notifications as Run
+	// makes progress. Optional: a nil value is treated as
+	// NopProgress.
+	Progress Progress
+
 	// DryRun stops the runner after the transform phase. The cluster
 	// is never modified.
 	DryRun bool
+
+	// Concurrency caps the number of in-flight per-object requests
+	// inside a single phase (apply_objects, delete_archived_objects).
+	// Zero or negative selects a sensible default.
+	Concurrency int
 }
 
 // Runner orchestrates the migration phases described in
@@ -38,11 +48,13 @@ type Config struct {
 // re-instantiate and Run a Runner against the same workdir; resume is
 // handled automatically via state.json.
 type Runner struct {
-	cfg    Config
-	layout Layout
-	client ClusterClient
-	crds   CRDInstaller
-	log    logr.Logger
+	cfg         Config
+	layout      Layout
+	client      ClusterClient
+	crds        CRDInstaller
+	log         logr.Logger
+	progress    Progress
+	concurrency int
 }
 
 // New builds a Runner from cfg. It validates the configuration but
@@ -54,12 +66,22 @@ func New(cfg Config) (*Runner, error) {
 	if !cfg.DryRun && cfg.Client == nil {
 		return nil, errors.New("runner.New: Config.Client is required when DryRun is false")
 	}
+	prog := cfg.Progress
+	if prog == nil {
+		prog = NopProgress{}
+	}
+	conc := cfg.Concurrency
+	if conc <= 0 {
+		conc = 8
+	}
 	return &Runner{
-		cfg:    cfg,
-		layout: NewLayout(cfg.Workdir),
-		client: cfg.Client,
-		crds:   cfg.CRDInstaller,
-		log:    cfg.Logger,
+		cfg:         cfg,
+		layout:      NewLayout(cfg.Workdir),
+		client:      cfg.Client,
+		crds:        cfg.CRDInstaller,
+		log:         cfg.Logger,
+		progress:    prog,
+		concurrency: conc,
 	}, nil
 }
 
@@ -71,8 +93,8 @@ func (r *Runner) Layout() Layout { return r.layout }
 // skipped.
 //
 // Phase order: export, transform, apply_crds_additive, apply_objects,
-// delete_old_crds, apply_crds_final. The three CRD phases are no-ops
-// when Config.CRDInstaller is nil.
+// delete_archived_objects, delete_old_crds, apply_crds_final. The
+// three CRD phases are no-ops when Config.CRDInstaller is nil.
 func (r *Runner) Run(ctx context.Context) (*State, error) {
 	if err := r.layout.Init(); err != nil {
 		return nil, fmt.Errorf("init layout: %w", err)
@@ -108,6 +130,10 @@ func (r *Runner) Run(ctx context.Context) (*State, error) {
 		return state, err
 	}
 
+	if err := r.runDeleteArchivedObjects(ctx, state); err != nil {
+		return state, err
+	}
+
 	if err := r.runCRDPhase(ctx, state, &state.Phases.DeleteOldCRDs, "delete_old_crds", func(c context.Context) error {
 		if r.crds == nil {
 			return nil
@@ -135,15 +161,23 @@ func (r *Runner) runCRDPhase(ctx context.Context, state *State, slot *Phase, nam
 	if *slot == PhaseDone {
 		return nil
 	}
+	r.progress.PhaseStart(name)
 	*slot = PhaseInProgress
 	if err := state.Save(r.layout); err != nil {
+		r.progress.PhaseEnd(name, err)
 		return err
 	}
 	if err := fn(ctx); err != nil {
 		*slot = PhaseFailed
 		_ = state.Save(r.layout)
+		r.progress.PhaseEnd(name, err)
 		return fmt.Errorf("%s: %w", name, err)
 	}
 	*slot = PhaseDone
-	return state.Save(r.layout)
+	if err := state.Save(r.layout); err != nil {
+		r.progress.PhaseEnd(name, err)
+		return err
+	}
+	r.progress.PhaseEnd(name, nil)
+	return nil
 }

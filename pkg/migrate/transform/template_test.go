@@ -57,10 +57,10 @@ tasks:
 				Image:          "quay.io/tinkerbell/actions/image2disk:v1.0.0",
 				Command:        "/usr/bin/image2disk",
 				Args:           []string{"--device", "/dev/sda"},
-				EnvVars:        []v2.EnvVar{{Key: "IMG_URL", Value: "https://example.com/disk.img"}},
+				Env:            map[string]string{"IMG_URL": "https://example.com/disk.img"},
 				TimeoutSeconds: &timeout,
 			}},
-			EnvVars: []v2.EnvVar{{Key: "DEBUG", Value: "true"}},
+			Env:     map[string]string{"DEBUG": "true"},
 			Volumes: []v2.Volume{"/dev:/dev"},
 		},
 	}

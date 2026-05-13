@@ -65,7 +65,7 @@ func WorkflowRuleSet(src *v1.WorkflowRuleSet) (*v2.Policy, error) {
 	// Template transform reuses the Template's name for a single-task
 	// fan-out.
 	if ref := src.Spec.Workflow.Template.Ref; ref != "" {
-		cfg.Tasks = []v2.PolicyWorkflowTask{{
+		cfg.Tasks = []v2.WorkflowTaskConfig{{
 			TaskRef: v2.SimpleReference{Name: ref, Namespace: src.Spec.Workflow.Namespace},
 		}}
 	}

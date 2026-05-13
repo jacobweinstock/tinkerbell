@@ -87,13 +87,40 @@ func mergeVersions(v1Raw, v2Raw []byte) ([]byte, error) {
 	for i := range v2CRD.Spec.Versions {
 		v2CRD.Spec.Versions[i].Served = true
 		v2CRD.Spec.Versions[i].Storage = (v2CRD.Spec.Versions[i].Name == "v1alpha2")
+		relaxSpecAndStatus(&v2CRD.Spec.Versions[i])
 	}
 	for _, vv := range v1CRD.Spec.Versions {
 		vv.Served = true
 		vv.Storage = false
+		relaxSpecAndStatus(&vv)
 		v2CRD.Spec.Versions = append(v2CRD.Spec.Versions, vv)
 	}
 	return yaml.Marshal(&v2CRD)
+}
+
+// relaxSpecAndStatus marks the spec and status sub-objects of a CRD
+// version's structural schema as preserve-unknown-fields. With
+// conversion strategy "None" the apiserver requires every served
+// version to accept the storage version's fields without pruning;
+// because the v1alpha1 and v1alpha2 schemas have disjoint top-level
+// spec fields (e.g. v1alpha1 has spec.interfaces while v1alpha2 has
+// spec.attributes / spec.networkInterfaces), writes of one shape
+// would otherwise be rejected when round-tripped through the other
+// version. Relaxing only spec and status keeps the apiVersion / kind
+// / metadata schemas intact.
+func relaxSpecAndStatus(v *apiv1.CustomResourceDefinitionVersion) {
+	if v.Schema == nil || v.Schema.OpenAPIV3Schema == nil {
+		return
+	}
+	preserve := true
+	for _, name := range []string{"spec", "status"} {
+		sub, ok := v.Schema.OpenAPIV3Schema.Properties[name]
+		if !ok {
+			continue
+		}
+		sub.XPreserveUnknownFields = &preserve
+		v.Schema.OpenAPIV3Schema.Properties[name] = sub
+	}
 }
 
 // MigrateMode applies the CRD set selected by mode using the same
@@ -127,6 +154,64 @@ func (t Tinkerbell) DeleteCRDs(ctx context.Context, names []string) error {
 			continue
 		}
 		joined = errors.Join(joined, fmt.Errorf("delete CRD %s: %w", name, err))
+	}
+	return joined
+}
+
+// FinalizeStoredVersions removes "v1alpha1" from status.storedVersions
+// on every shared-name CRD that still has it. This is the missing
+// half of the K8s storage-version dance: the apiserver refuses an
+// update to spec.versions that drops a version while
+// status.storedVersions still references it, even when no objects
+// remain at that version.
+//
+// Callers must guarantee no objects are persisted as v1alpha1 before
+// invoking this. The migrate runner satisfies that condition by
+// re-applying every transformed object as v1alpha2 in the
+// apply_objects phase (and by archiving / discarding the rest), so
+// nothing is left at v1alpha1 storage by the time apply_crds_final
+// runs.
+//
+// Idempotent: CRDs that don't exist (404) and CRDs whose
+// storedVersions no longer contain v1alpha1 are silently skipped.
+// Errors from individual CRDs are joined so one failure does not
+// hide the others.
+func (t Tinkerbell) FinalizeStoredVersions(ctx context.Context) error {
+	var joined error
+	for name := range TinkerbellV1Alpha2 {
+		if _, shared := TinkerbellDefaults[name]; !shared {
+			continue
+		}
+		existing, err := t.Client.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			joined = errors.Join(joined, fmt.Errorf("get CRD %s: %w", name, err))
+			continue
+		}
+		kept := make([]string, 0, len(existing.Status.StoredVersions))
+		changed := false
+		for _, v := range existing.Status.StoredVersions {
+			if v == "v1alpha1" {
+				changed = true
+				continue
+			}
+			kept = append(kept, v)
+		}
+		if !changed {
+			continue
+		}
+		if len(kept) == 0 {
+			// The apiserver rejects an empty storedVersions list.
+			// v1alpha2 is the only other version we ever install,
+			// so seed it explicitly.
+			kept = []string{"v1alpha2"}
+		}
+		existing.Status.StoredVersions = kept
+		if _, err := t.Client.ApiextensionsV1().CustomResourceDefinitions().UpdateStatus(ctx, existing, metav1.UpdateOptions{FieldManager: "Tinkerbell CLI"}); err != nil {
+			joined = errors.Join(joined, fmt.Errorf("update status for CRD %s: %w", name, err))
+		}
 	}
 	return joined
 }

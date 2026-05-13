@@ -109,6 +109,18 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 		Config: ui.NewConfig(uiOpts...),
 	}
 
+	stack := &stackConfig{
+		startTime: startTime,
+		globals:   globals,
+		smee:      s,
+		tootles:   h,
+		tinkSrv:   ts,
+		tinkCtl:   tc,
+		rufio:     rc,
+		secondSt:  ssc,
+		ui:        uic,
+	}
+
 	// order here determines the help output.
 	top := ff.NewFlagSet("smee - DHCP and iPXE service")
 	if embeddedFlagSet != nil {
@@ -136,21 +148,78 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 	}
 
 	cli := &ff.Command{
-		Name:     "tinkerbell",
-		Usage:    "tinkerbell [flags]",
-		LongHelp: "Tinkerbell stack.",
-		Flags:    gfs,
+		Name:        "tinkerbell",
+		Usage:       "tinkerbell [flags] | tinkerbell <subcommand> [flags]",
+		LongHelp:    "Tinkerbell stack.",
+		Flags:       gfs,
+		Subcommands: []*ff.Command{newMigrateCommand()},
+		Exec: func(ctx context.Context, _ []string) error {
+			return runStack(ctx, cancel, stack)
+		},
 	}
 
-	if err := cli.Parse(args, ff.WithEnvVarPrefix("TINKERBELL")); err != nil {
-		e := errors.New(ffhelp.Command(cli).String())
-		if !errors.Is(err, ff.ErrHelp) {
-			e = fmt.Errorf("%w\n%s", e, err)
+	if err := cli.ParseAndRun(ctx, args, ff.WithEnvVarPrefix("TINKERBELL")); err != nil {
+		// Render the usage block only for parse-time / help errors.
+		// Errors returned by an Exec function (e.g. a runtime
+		// failure inside `tinkerbell migrate`) are returned as-is so
+		// the operator sees just the error, not a wall of help text.
+		if isUsageError(err) {
+			help := errors.New(ffhelp.Command(cli).String())
+			if errors.Is(err, ff.ErrHelp) {
+				return help
+			}
+			return fmt.Errorf("%w\n%s", help, err)
 		}
-
-		return e
+		return err
 	}
+	return nil
+}
 
+// isUsageError reports whether err originates from ff's flag-parsing
+// stage (and therefore warrants rendering the usage / help block),
+// as opposed to a runtime error returned by a subcommand's Exec.
+func isUsageError(err error) bool {
+	switch {
+	case errors.Is(err, ff.ErrHelp),
+		errors.Is(err, ff.ErrUnknownFlag),
+		errors.Is(err, ff.ErrDuplicateFlag),
+		errors.Is(err, ff.ErrAmbiguousFlag),
+		errors.Is(err, ff.ErrNoExec):
+		return true
+	}
+	return false
+}
+
+// stackConfig bundles the per-service configuration produced by flag
+// parsing for the long-running Tinkerbell stack. Bundling keeps the
+// runStack signature small and makes it obvious that none of these
+// fields are derived from each other; they are independent inputs.
+type stackConfig struct {
+	startTime time.Time
+	globals   *flag.GlobalConfig
+	smee      *flag.SmeeConfig
+	tootles   *flag.TootlesConfig
+	tinkSrv   *flag.TinkServerConfig
+	tinkCtl   *flag.TinkControllerConfig
+	rufio     *flag.RufioConfig
+	secondSt  *flag.SecondStarConfig
+	ui        *flag.UIConfig
+}
+
+// runStack executes the long-running Tinkerbell stack. It is the
+// post-parse body of the root command's Exec, extracted so the root
+// command can declare subcommands while keeping the stack startup
+// logic in one readable function.
+func runStack(ctx context.Context, cancel context.CancelFunc, cfg *stackConfig) error {
+	startTime := cfg.startTime
+	globals := cfg.globals
+	s := cfg.smee
+	h := cfg.tootles
+	ts := cfg.tinkSrv
+	tc := cfg.tinkCtl
+	rc := cfg.rufio
+	ssc := cfg.secondSt
+	uic := cfg.ui
 	log := getLogger(globals.LogLevel)
 	cliLog := log.WithName("cli")
 	cliLog.Info("starting tinkerbell",

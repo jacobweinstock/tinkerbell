@@ -16,7 +16,9 @@ import (
 // runTransform runs the transform phase for every kind in catalog
 // order. Templates are processed before Workflows so the TemplateRefs
 // map built from Template fan-out is available to Workflow.
-func (r *Runner) runTransform(ctx context.Context, state *State) error {
+func (r *Runner) runTransform(ctx context.Context, state *State) (rerr error) {
+	r.progress.PhaseStart("transform")
+	defer func() { r.progress.PhaseEnd("transform", rerr) }()
 	templateRefs := transform.TemplateRefs{}
 	for _, k := range SourceKinds {
 		if err := ctx.Err(); err != nil {
@@ -39,12 +41,14 @@ func (r *Runner) runTransform(ctx context.Context, state *State) error {
 		if err := r.transformKind(state, k, templateRefs); err != nil {
 			state.SetTransform(k.Name, PhaseFailed)
 			_ = state.Save(r.layout)
+			r.progress.KindEnd("transform", k.Name, err)
 			return fmt.Errorf("transform %s: %w", k.Name, err)
 		}
 		state.SetTransform(k.Name, PhaseDone)
 		if err := state.Save(r.layout); err != nil {
 			return err
 		}
+		r.progress.KindEnd("transform", k.Name, nil)
 	}
 	return nil
 }
@@ -55,6 +59,7 @@ func (r *Runner) transformKind(state *State, k SourceKind, templateRefs transfor
 	if err != nil {
 		return err
 	}
+	r.progress.KindStart("transform", k.Name, len(files))
 	counts := state.Count(k.Name)
 	for _, name := range files {
 		path := filepath.Join(srcDir, name)
@@ -71,6 +76,7 @@ func (r *Runner) transformKind(state *State, k SourceKind, templateRefs transfor
 		} else {
 			counts.Transformed++
 		}
+		r.progress.KindItem("transform", k.Name)
 	}
 	return nil
 }

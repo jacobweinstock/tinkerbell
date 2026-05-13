@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,6 +24,11 @@ type ClusterClient interface {
 	// same field manager is a no-op. namespaced selects between the
 	// namespaced and cluster-scoped resource endpoints.
 	ServerSideApply(ctx context.Context, gvr schema.GroupVersionResource, namespaced bool, obj *unstructured.Unstructured, fieldManager string) error
+
+	// Delete removes a single object by name. Idempotent: a NotFound
+	// response is reported as nil. namespaced selects between the
+	// namespaced and cluster-scoped resource endpoints.
+	Delete(ctx context.Context, gvr schema.GroupVersionResource, namespaced bool, namespace, name string) error
 }
 
 // dynamicClusterClient is the production ClusterClient backed by
@@ -76,6 +83,19 @@ func (c *dynamicClusterClient) ServerSideApply(ctx context.Context, gvr schema.G
 		_, err = c.dyn.Resource(gvr).Namespace(obj.GetNamespace()).Patch(ctx, obj.GetName(), types.ApplyPatchType, data, opts)
 	} else {
 		_, err = c.dyn.Resource(gvr).Patch(ctx, obj.GetName(), types.ApplyPatchType, data, opts)
+	}
+	return err
+}
+
+func (c *dynamicClusterClient) Delete(ctx context.Context, gvr schema.GroupVersionResource, namespaced bool, namespace, name string) error {
+	var err error
+	if namespaced {
+		err = c.dyn.Resource(gvr).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	} else {
+		err = c.dyn.Resource(gvr).Delete(ctx, name, metav1.DeleteOptions{})
+	}
+	if apierrors.IsNotFound(err) {
+		return nil
 	}
 	return err
 }

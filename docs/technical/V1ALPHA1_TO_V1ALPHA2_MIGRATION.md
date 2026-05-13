@@ -12,11 +12,11 @@ Legend: `not-started`, `in-progress`, `done`, `blocked`.
 | Step | Description                                                                          | Status      | Notes / Commit |
 |------|--------------------------------------------------------------------------------------|-------------|----------------|
 | 0    | Save plan + checkpoint baseline                                                      | done        | b39047af       |
-| 1    | `pkg/migrate/transform/` — pure v1alpha1↔v1alpha2 transform functions                | in-progress |                |
-| 2    | `pkg/migrate/runner/` — streaming runner with resumable `state.json`                 | not-started |                |
-| 3    | `pkg/migrate/report/` — `--report json` and `--report tui` renderers                 | not-started |                |
-| 4    | `crd` package: additive vs final modes; `DeleteCRDs`                                 | not-started |                |
-| 5    | `cmd/tinkerbell`: `tinkerbell migrate` subcommand (argv[1] dispatch)                 | not-started |                |
+| 1    | `pkg/migrate/transform/` — pure v1alpha1↔v1alpha2 transform functions                | done        | bb6cabd2       |
+| 2    | `pkg/migrate/runner/` — streaming runner with resumable `state.json`                 | done        | 256762e0       |
+| 3    | `pkg/migrate/report/` — `--report json` and `--report tui` renderers                 | done        | 8835c7a3       |
+| 4    | `crd` package: additive vs final modes; `DeleteCRDs`                                 | done        | 6efa9983       |
+| 5    | `cmd/tinkerbell`: `tinkerbell migrate` subcommand (argv[1] dispatch)                 | done        | cc3713c5       |
 | 6    | Default `crd.NewTinkerbell` to v1alpha2; refuse v1alpha1 data at normal startup      | not-started |                |
 | 7    | Per-component v1alpha2 import migration (smee, tootles, tink-server, ui, backend...) | not-started |                |
 | 8    | CI static-import-guard for `api/v1alpha1`                                            | not-started |                |
@@ -158,9 +158,10 @@ archive-only files.
     "export":              {"hardware": "done", "workflow": "in_progress" },
     "transform":           {"hardware": "done" },
     "apply_crds_additive": "done",
-    "apply_objects":       {"hardware": "done" },
-    "delete_old_crds":     "pending",
-    "apply_crds_final":    "pending"
+    "apply_objects":            {"hardware": "done" },
+    "delete_archived_objects":  {"workflow": "pending", "bmcjob": "pending" },
+    "delete_old_crds":          "pending",
+    "apply_crds_final":         "pending"
   },
   "counts": {
     "hardware": {"exported": 1247, "transformed": 1247, "applied": 0}
@@ -168,8 +169,7 @@ archive-only files.
 }
 ```
 
-Single source of truth for resume. Updated atomically (write-temp +
-rename).
+Single source of truth for resume. Updated atomically (write-temp + rename).
 
 ## Execution phases
 
@@ -179,9 +179,10 @@ rename).
 | 2 | `transform`            | yes          | Walk `source-v1alpha1/<kind>/`, decode → typed transform → encode. Apply-handling kinds go to `target-v1alpha2/<kind>/`. Workflow goes to `target-v1alpha2/archive/workflow/` with spec transformed and status omitted. BMC Job is copied verbatim to `target-v1alpha2/archive/bmcjob/`. `bmc.Task`: log and discard. One file in memory at a time. Template→Tasks fan-out. |
 | 3 | `apply_crds_additive`  | yes          | Apply v1alpha2 CRDs in additive mode: shared-name CRDs gain v1alpha2 (storage=true) while keeping v1alpha1 served; renamed CRDs created fresh. |
 | 4 | `apply_objects`        | partially    | Server-side apply files under `target-v1alpha2/<kind>/` (hardware, task, policy, bmc) with field manager `tinkerbell-migrate`. **Files under `target-v1alpha2/archive/` are never applied.** Per-file completion recorded in `state.json`. |
-| 5 | `delete_old_crds`      | **no**       | Delete `templates.tinkerbell.org`, `workflowrulesets.tinkerbell.org`, `machines.bmc.tinkerbell.org`, `tasks.bmc.tinkerbell.org`. Apiserver GCs CRs; workdir is the only recovery copy. |
-| 6 | `apply_crds_final`     | **no**       | Re-apply v1alpha2 CRDs in final mode: shared-name CRDs lose v1alpha1 from `spec.versions`. |
-| 7 | `report`               | —            | Print final report (TUI or JSON). |
+| 5 | `delete_archived_objects` | **no**    | Delete the v1alpha1 cluster CRs of every archive-handled kind (Workflow, BMC Job). Source-of-truth for the name list is `source-v1alpha1/<kind>/`, so this is resumable and does not depend on the apiserver still serving v1alpha1. Without this step the next phase leaves the cluster with CRs stored at a version that is no longer served, breaking `kubectl get`. |
+| 6 | `delete_old_crds`      | **no**       | Delete `templates.tinkerbell.org`, `workflowrulesets.tinkerbell.org`, `machines.bmc.tinkerbell.org`, `tasks.bmc.tinkerbell.org`. Apiserver GCs CRs; workdir is the only recovery copy. |
+| 7 | `apply_crds_final`     | **no**       | Re-apply v1alpha2 CRDs in final mode: shared-name CRDs lose v1alpha1 from `spec.versions`. |
+| 8 | `report`               | —            | Print final report (TUI or JSON). |
 
 Resume from any failed phase. Within a phase, per-object idempotency:
 
@@ -298,5 +299,3 @@ at the first non-`done` step.
 - A separate `tinkerbell migrate status --workdir=…` subcommand that
   prints state without acting. Likely yes; cheap. Deferred to after
   step 9.
-- Eventual removal of the `api/v1alpha1` Go package. Deferred — kept
-  while the migrate command exists.

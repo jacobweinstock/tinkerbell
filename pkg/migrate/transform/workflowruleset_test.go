@@ -50,7 +50,7 @@ func TestWorkflowRuleSet(t *testing.T) {
 						Globals: &v2.Extra{
 							TemplateMap: map[string]string{"image": "ubuntu-22.04"},
 						},
-						Tasks: []v2.PolicyWorkflowTask{{
+						Tasks: []v2.WorkflowTaskConfig{{
 							TaskRef: v2.SimpleReference{Name: "ubuntu", Namespace: "tinkerbell"},
 						}},
 					},

@@ -38,12 +38,13 @@ type State struct {
 // keyed by the kind name used in the workdir layout (e.g. "hardware",
 // "template", "bmcmachine").
 type PhaseState struct {
-	Export            map[string]Phase `json:"export,omitempty"`
-	Transform         map[string]Phase `json:"transform,omitempty"`
-	ApplyCRDsAdditive Phase            `json:"apply_crds_additive,omitempty"`
-	ApplyObjects      map[string]Phase `json:"apply_objects,omitempty"`
-	DeleteOldCRDs     Phase            `json:"delete_old_crds,omitempty"`
-	ApplyCRDsFinal    Phase            `json:"apply_crds_final,omitempty"`
+	Export                map[string]Phase `json:"export,omitempty"`
+	Transform             map[string]Phase `json:"transform,omitempty"`
+	ApplyCRDsAdditive     Phase            `json:"apply_crds_additive,omitempty"`
+	ApplyObjects          map[string]Phase `json:"apply_objects,omitempty"`
+	DeleteArchivedObjects map[string]Phase `json:"delete_archived_objects,omitempty"`
+	DeleteOldCRDs         Phase            `json:"delete_old_crds,omitempty"`
+	ApplyCRDsFinal        Phase            `json:"apply_crds_final,omitempty"`
 }
 
 // KindCounts records per-kind tallies used in the final report.
@@ -157,6 +158,15 @@ func (s *State) SetApplyObjects(kind string, p Phase) {
 		s.Phases.ApplyObjects = map[string]Phase{}
 	}
 	s.Phases.ApplyObjects[kind] = p
+}
+
+// SetDeleteArchivedObjects records a phase value for a single source
+// kind in the delete-archived-objects stage.
+func (s *State) SetDeleteArchivedObjects(kind string, p Phase) {
+	if s.Phases.DeleteArchivedObjects == nil {
+		s.Phases.DeleteArchivedObjects = map[string]Phase{}
+	}
+	s.Phases.DeleteArchivedObjects[kind] = p
 }
 
 // Count returns the Counts entry for kind, creating it lazily.
