@@ -253,3 +253,84 @@ func TestParseObjectFilename(t *testing.T) {
 // silence the metav1 unused import linter on minimal builds.
 var _ = metav1.Time{}
 var _ = filepath.Separator
+
+// fakeCRDInstaller records call order for assertions.
+type fakeCRDInstaller struct {
+	calls    []string
+	failNext error
+}
+
+func (f *fakeCRDInstaller) ApplyAdditive(context.Context) error {
+	f.calls = append(f.calls, "additive")
+	return f.takeErr()
+}
+func (f *fakeCRDInstaller) DeleteOld(context.Context) error {
+	f.calls = append(f.calls, "delete_old")
+	return f.takeErr()
+}
+func (f *fakeCRDInstaller) ApplyFinal(context.Context) error {
+	f.calls = append(f.calls, "final")
+	return f.takeErr()
+}
+func (f *fakeCRDInstaller) takeErr() error {
+	err := f.failNext
+	f.failNext = nil
+	return err
+}
+
+func TestRunnerInvokesCRDPhasesInOrder(t *testing.T) {
+	dir := t.TempDir()
+	fc := &fakeClient{items: map[schema.GroupVersionResource][]*unstructured.Unstructured{}}
+	fi := &fakeCRDInstaller{}
+	r, err := New(Config{Workdir: dir, Client: fc, CRDInstaller: fi})
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	state, err := r.Run(context.Background())
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	want := []string{"additive", "delete_old", "final"}
+	if len(fi.calls) != len(want) {
+		t.Fatalf("calls = %v, want %v", fi.calls, want)
+	}
+	for i, c := range want {
+		if fi.calls[i] != c {
+			t.Errorf("call %d = %q, want %q", i, fi.calls[i], c)
+		}
+	}
+	if state.Phases.ApplyCRDsAdditive != PhaseDone ||
+		state.Phases.DeleteOldCRDs != PhaseDone ||
+		state.Phases.ApplyCRDsFinal != PhaseDone {
+		t.Errorf("crd phases not done: %#v", state.Phases)
+	}
+
+	// Resume: CRD phases are not re-invoked.
+	if _, err := r.Run(context.Background()); err != nil {
+		t.Fatalf("resume: %v", err)
+	}
+	if len(fi.calls) != len(want) {
+		t.Fatalf("resume re-invoked CRDs: %v", fi.calls)
+	}
+}
+
+func TestRunnerCRDPhaseFailureIsRecorded(t *testing.T) {
+	dir := t.TempDir()
+	fc := &fakeClient{items: map[schema.GroupVersionResource][]*unstructured.Unstructured{}}
+	fi := &fakeCRDInstaller{failNext: context.Canceled}
+	r, err := New(Config{Workdir: dir, Client: fc, CRDInstaller: fi})
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	state, err := r.Run(context.Background())
+	if err == nil {
+		t.Fatalf("expected error from failing additive phase")
+	}
+	if state.Phases.ApplyCRDsAdditive != PhaseFailed {
+		t.Errorf("expected additive=failed, got %q", state.Phases.ApplyCRDsAdditive)
+	}
+	// later phases never ran
+	if state.Phases.DeleteOldCRDs == PhaseDone || state.Phases.ApplyCRDsFinal == PhaseDone {
+		t.Errorf("later phases ran after failure: %#v", state.Phases)
+	}
+}

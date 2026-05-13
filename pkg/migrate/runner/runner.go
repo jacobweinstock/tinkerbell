@@ -18,6 +18,12 @@ type Config struct {
 	// cluster; may be nil when DryRun is true.
 	Client ClusterClient
 
+	// CRDInstaller drives the apply_crds_additive, delete_old_crds and
+	// apply_crds_final phases. When nil the runner treats those
+	// phases as no-ops (useful in tests and for partial dry-runs that
+	// only exercise object I/O).
+	CRDInstaller CRDInstaller
+
 	// Logger is used for human-readable progress and error reporting.
 	// A discard logger is used when zero-valued.
 	Logger logr.Logger
@@ -32,10 +38,11 @@ type Config struct {
 // re-instantiate and Run a Runner against the same workdir; resume is
 // handled automatically via state.json.
 type Runner struct {
-	cfg    Config
-	layout Layout
-	client ClusterClient
-	log    logr.Logger
+	cfg     Config
+	layout  Layout
+	client  ClusterClient
+	crds    CRDInstaller
+	log     logr.Logger
 }
 
 // New builds a Runner from cfg. It validates the configuration but
@@ -51,6 +58,7 @@ func New(cfg Config) (*Runner, error) {
 		cfg:    cfg,
 		layout: NewLayout(cfg.Workdir),
 		client: cfg.Client,
+		crds:   cfg.CRDInstaller,
 		log:    cfg.Logger,
 	}, nil
 }
@@ -62,9 +70,9 @@ func (r *Runner) Layout() Layout { return r.layout }
 // and after each meaningful step. Phases already marked Done are
 // skipped.
 //
-// Phase coverage in step 2 of the migration plan: export, transform,
-// apply_objects. CRD additive / final and delete_old_crds phases are
-// stubbed (set Done immediately) and will be filled in by step 4.
+// Phase order: export, transform, apply_crds_additive, apply_objects,
+// delete_old_crds, apply_crds_final. The three CRD phases are no-ops
+// when Config.CRDInstaller is nil.
 func (r *Runner) Run(ctx context.Context) (*State, error) {
 	if err := r.layout.Init(); err != nil {
 		return nil, fmt.Errorf("init layout: %w", err)
@@ -87,29 +95,55 @@ func (r *Runner) Run(ctx context.Context) (*State, error) {
 		return state, nil
 	}
 
-	// CRD phases are placeholders for step 4.
-	if state.Phases.ApplyCRDsAdditive != PhaseDone {
-		state.Phases.ApplyCRDsAdditive = PhaseDone
-		if err := state.Save(r.layout); err != nil {
-			return state, err
+	if err := r.runCRDPhase(ctx, state, &state.Phases.ApplyCRDsAdditive, "apply_crds_additive", func(c context.Context) error {
+		if r.crds == nil {
+			return nil
 		}
+		return r.crds.ApplyAdditive(c)
+	}); err != nil {
+		return state, err
 	}
 
 	if err := r.runApplyObjects(ctx, state); err != nil {
 		return state, err
 	}
 
-	if state.Phases.DeleteOldCRDs != PhaseDone {
-		state.Phases.DeleteOldCRDs = PhaseDone
-		if err := state.Save(r.layout); err != nil {
-			return state, err
+	if err := r.runCRDPhase(ctx, state, &state.Phases.DeleteOldCRDs, "delete_old_crds", func(c context.Context) error {
+		if r.crds == nil {
+			return nil
 		}
+		return r.crds.DeleteOld(c)
+	}); err != nil {
+		return state, err
 	}
-	if state.Phases.ApplyCRDsFinal != PhaseDone {
-		state.Phases.ApplyCRDsFinal = PhaseDone
-		if err := state.Save(r.layout); err != nil {
-			return state, err
+
+	if err := r.runCRDPhase(ctx, state, &state.Phases.ApplyCRDsFinal, "apply_crds_final", func(c context.Context) error {
+		if r.crds == nil {
+			return nil
 		}
+		return r.crds.ApplyFinal(c)
+	}); err != nil {
+		return state, err
 	}
 	return state, nil
+}
+
+// runCRDPhase is the shared scaffolding for the three CRD phases.
+// It marks the phase in-progress, runs fn, then marks done; on
+// failure it records "failed" and returns the wrapped error.
+func (r *Runner) runCRDPhase(ctx context.Context, state *State, slot *Phase, name string, fn func(context.Context) error) error {
+	if *slot == PhaseDone {
+		return nil
+	}
+	*slot = PhaseInProgress
+	if err := state.Save(r.layout); err != nil {
+		return err
+	}
+	if err := fn(ctx); err != nil {
+		*slot = PhaseFailed
+		_ = state.Save(r.layout)
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	*slot = PhaseDone
+	return state.Save(r.layout)
 }
