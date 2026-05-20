@@ -68,7 +68,7 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 		preTP  string
 		preErr error
 	)
-	switch p.Pkt.MessageType() {
+	switch p.Pkt.MessageType() { //nolint:exhaustive // only Discover/Request need traceparent stitching; others fall through and are handled later.
 	case dhcpv4.MessageTypeDiscover, dhcpv4.MessageTypeRequest:
 		preD, preN, preTP, preErr = h.readBackend(ctx, p.Pkt.ClientHWAddr)
 		if preTP != "" {

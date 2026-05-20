@@ -167,7 +167,7 @@ func ContextWithCmdlineTraceparent(ctx context.Context) context.Context {
 // value of CmdlineTraceparentKey, or "" if not found / unreadable. Extracted
 // for testability.
 func traceparentFromCmdline(path string) string {
-	b, err := os.ReadFile(path) //nolint:gosec // path is provided by caller (default /proc/cmdline)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}

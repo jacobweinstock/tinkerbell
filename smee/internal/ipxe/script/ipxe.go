@@ -263,7 +263,7 @@ func getMAC(urlPath string) (net.HardwareAddr, error) {
 }
 
 func (h *Handler) serveBootScript(ctx context.Context, w http.ResponseWriter, name string, hw info) {
-	ctx, span := otel.Tracer("github.com/tinkerbell/tinkerbell/smee/ipxe").Start(ctx, "smee.ipxe.serve_script")
+	_, span := otel.Tracer("github.com/tinkerbell/tinkerbell/smee/ipxe").Start(ctx, "smee.ipxe.serve_script")
 	defer span.End()
 	span.SetAttributes(attribute.String("smee.script_name", name))
 	var script []byte

@@ -155,7 +155,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	// every span, log, and outbound annotation in this reconcile pass shares
 	// the workflow's trace_id. The status mutation (if any) is patched at the
 	// end of the switch via mergePatchStatus.
-	rootTP, _ := ensureRootTraceparent(ctx, wflow)
+	rootTP := ensureRootTraceparent(ctx, wflow)
 	ctx = tinkotel.ContextWithRemoteTraceparent(ctx, rootTP)
 	ctx, reconcileSpan := tracer().Start(ctx, "workflow.reconcile",
 		trace.WithAttributes(
@@ -190,7 +190,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return resp, errors.Join(err, mergePatchStatus(ctx, r.client, stored, wflow))
 	case v1alpha1.WorkflowStatePreparing:
 		journal.Log(ctx, "preparing workflow")
-		phaseTP, _ := ensurePhaseTraceparent(ctx, wflow, phasePreBMC)
+		phaseTP := ensurePhaseTraceparent(ctx, wflow, phasePreBMC)
 		s := &state{
 			client:           r.client,
 			workflow:         wflow,
@@ -236,7 +236,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, mergePatchStatus(ctx, r.client, stored, wflow)
 	case v1alpha1.WorkflowStatePost:
 		journal.Log(ctx, "post actions")
-		phaseTP, _ := ensurePhaseTraceparent(ctx, wflow, phasePostBMC)
+		phaseTP := ensurePhaseTraceparent(ctx, wflow, phasePostBMC)
 		s := &state{
 			client:           r.client,
 			workflow:         wflow,

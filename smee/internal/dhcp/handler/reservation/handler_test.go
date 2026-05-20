@@ -873,7 +873,7 @@ func TestUpdateMsg(t *testing.T) {
 func TestOne(t *testing.T) {
 	t.Skip()
 	h := &Handler{}
-	_, _, _, err := h.readBackend(context.Background(), nil)
+	_, _, _, err := h.readBackend(context.Background(), nil) //nolint:dogsled // ignoring the three non-error returns is fine in this skipped sanity test.
 	t.Fatal(err)
 }
 

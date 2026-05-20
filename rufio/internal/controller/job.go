@@ -109,6 +109,11 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	return r.doReconcile(ctx, job, jobPatch)
 }
 
+// doReconcile keeps the (ctrl.Result, error) return signature for symmetry with
+// MachineReconciler.doReconcile and TaskReconciler.doReconcile; the Result is
+// always zero today but the shape is part of the conventional reconciler pattern.
+//
+//nolint:unparam // Result is intentionally always zero; see comment above.
 func (r *JobReconciler) doReconcile(ctx context.Context, job *bmc.Job, jobPatch client.Patch) (ctrl.Result, error) {
 	// Check if Job is not currently Running
 	// Initialize the StartTime for the Job

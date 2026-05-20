@@ -238,7 +238,7 @@ func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task b
 	if task.OneTimeBootDeviceAction != nil { //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility. We will remove in a future release.
 		ctx, span := tracer.Start(ctx, "bmc.set_boot_device",
 			trace.WithAttributes(
-				attribute.String("bmc.boot_device", string(task.OneTimeBootDeviceAction.Devices[0])), //nolint:staticcheck
+				attribute.String("bmc.boot_device", string(task.OneTimeBootDeviceAction.Devices[0])), //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility.
 				attribute.Bool("bmc.persistent", false),
 			))
 		defer span.End()
