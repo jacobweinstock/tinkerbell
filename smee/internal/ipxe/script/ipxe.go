@@ -13,8 +13,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/data"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
 	"github.com/tinkerbell/tinkerbell/smee/internal/dhcp"
 	"github.com/tinkerbell/tinkerbell/smee/internal/metric"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -52,6 +54,12 @@ type info struct {
 	IPXEScript    string
 	IPXEScriptURL *url.URL
 	OSIE          OSIE
+	// Traceparent is the W3C traceparent published on the Hardware CR by the
+	// workflow controller. Empty when no workflow is currently driving this
+	// machine. Used to re-parent smee spans into the workflow trace and to
+	// inject tinkerbell_traceparent=... into the kernel cmdline so the booted
+	// OS (agent) continues the same trace.
+	Traceparent string
 }
 
 // OSIE or OS Installation Environment is the data about where the OSIE parts are located.
@@ -99,6 +107,7 @@ func getByMac(ctx context.Context, mac net.HardwareAddr, br BackendReader) (info
 		IPXEScript:    n.IPXEScript,
 		IPXEScriptURL: n.IPXEScriptURL,
 		OSIE:          OSIE(n.OSIE),
+		Traceparent:   spec.Annotations[tinkerbell.AnnotationTraceparent],
 	}, nil
 }
 
@@ -134,6 +143,7 @@ func getByIP(ctx context.Context, ip net.IP, br BackendReader) (info, error) {
 		IPXEScript:    n.IPXEScript,
 		IPXEScriptURL: n.IPXEScriptURL,
 		OSIE:          OSIE(n.OSIE),
+		Traceparent:   spec.Annotations[tinkerbell.AnnotationTraceparent],
 	}, nil
 }
 
@@ -178,6 +188,7 @@ func (h *Handler) HandlerFunc() http.HandlerFunc {
 
 				return
 			}
+			ctx = tinkotel.ContextWithRemoteTraceparent(ctx, hw.Traceparent)
 			h.serveBootScript(ctx, w, path.Base(r.URL.Path), hw)
 			return
 		}
@@ -194,6 +205,7 @@ func (h *Handler) HandlerFunc() http.HandlerFunc {
 
 				return
 			}
+			ctx = tinkotel.ContextWithRemoteTraceparent(ctx, hw.Traceparent)
 			h.serveBootScript(ctx, w, path.Base(r.URL.Path), hw)
 			return
 		}
@@ -251,7 +263,8 @@ func getMAC(urlPath string) (net.HardwareAddr, error) {
 }
 
 func (h *Handler) serveBootScript(ctx context.Context, w http.ResponseWriter, name string, hw info) {
-	span := trace.SpanFromContext(ctx)
+	ctx, span := otel.Tracer("github.com/tinkerbell/tinkerbell/smee/ipxe").Start(ctx, "smee.ipxe.serve_script")
+	defer span.End()
 	span.SetAttributes(attribute.String("smee.script_name", name))
 	var script []byte
 	// check if the custom script should be used
@@ -343,6 +356,7 @@ func (h *Handler) defaultScript(span trace.Span, hw info) (string, error) {
 	if span.SpanContext().IsSampled() {
 		auto.TraceID = span.SpanContext().TraceID().String()
 	}
+	auto.Traceparent = hw.Traceparent
 
 	return GenerateTemplate(auto, HookScript)
 }

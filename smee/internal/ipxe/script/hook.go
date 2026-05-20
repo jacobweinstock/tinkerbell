@@ -22,7 +22,7 @@ set retry_delay:int32 {{ .RetryDelay }}
 set idx:int32 0
 :retry_kernel
 kernel ${download-url}/${kernel} {{- if ne .VLANID "" }} vlan_id={{ .VLANID }} {{- end }} \
-facility={{ .Facility }} syslog_host={{ .SyslogHost }} grpc_authority={{ .TinkGRPCAuthority }} tinkerbell_tls={{ .TinkerbellTLS }} tinkerbell_insecure_tls={{ .TinkerbellInsecureTLS }} worker_id={{ .WorkerID }} hw_addr={{ .HWAddr }} \
+facility={{ .Facility }} syslog_host={{ .SyslogHost }} grpc_authority={{ .TinkGRPCAuthority }} tinkerbell_tls={{ .TinkerbellTLS }} tinkerbell_insecure_tls={{ .TinkerbellInsecureTLS }} worker_id={{ .WorkerID }} hw_addr={{ .HWAddr }}{{ if .Traceparent }} tinkerbell_traceparent={{ .Traceparent }}{{ end }} \
 modules=loop,squashfs,sd-mod,usb-storage intel_iommu=on iommu=pt initrd=${initrd} console=tty0 console=ttyS1,115200 {{- range .ExtraKernelParams}} {{.}} {{- end}} && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 
 :download_initrd
@@ -64,6 +64,7 @@ type Hook struct {
 	TinkerbellInsecureTLS bool
 	TinkGRPCAuthority     string // example 192.168.2.111:42113
 	TraceID               string
+	Traceparent           string // W3C traceparent injected as tinkerbell_traceparent= on kernel cmdline so the booted OS continues the workflow trace
 	VLANID                string // string number between 1-4095
 	WorkerID              string // example 3c:ec:ef:4c:4f:54 or worker1
 	Retries               int    // number of retries to attempt when fetching kernel and initrd files

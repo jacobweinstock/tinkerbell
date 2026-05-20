@@ -166,6 +166,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	)
 	defer reconcileSpan.End()
 
+	// Make sure the referenced Hardware carries the workflow's traceparent
+	// so smee and tootles can stitch into this trace whenever they serve a
+	// request for this machine. Failures are logged but non-fatal -- the
+	// next reconcile will retry.
+	if err := ensureHardwareTraceparent(ctx, r.client, wflow, rootTP); err != nil {
+		logger.V(1).Info("failed to stamp traceparent on hardware", "error", err.Error())
+	}
+
 	switch wflow.Status.State {
 	case "":
 		journal.Log(ctx, "new workflow")

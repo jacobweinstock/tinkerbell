@@ -95,6 +95,45 @@ func hardwareFrom(ctx context.Context, cc client.Client, w *v1alpha1.Workflow) (
 	return h, nil
 }
 
+// ensureHardwareTraceparent makes sure the Hardware referenced by w carries
+// the workflow's root traceparent under v1alpha1.AnnotationTraceparent. This
+// is what lets smee (DHCP/TFTP/iPXE) and tootles (metadata) re-parent their
+// spans into the workflow's trace whenever they handle a request for this
+// machine, regardless of which phase the workflow is in.
+//
+// The annotation tracks the workflow's root traceparent (not a phase
+// traceparent) so a single stable value covers the full lifecycle. It is
+// re-stamped on every reconcile pass that finds it missing or stale, which
+// makes the operation self-healing if smee/tootles ever observe a Hardware
+// without it.
+//
+// Missing hardware, missing HardwareRef, and apply conflicts are non-fatal:
+// the reconciler will try again on the next pass.
+func ensureHardwareTraceparent(ctx context.Context, cc client.Client, w *v1alpha1.Workflow, traceparent string) error {
+	if w == nil || w.Spec.HardwareRef == "" || traceparent == "" {
+		return nil
+	}
+	h := &v1alpha1.Hardware{}
+	if err := cc.Get(ctx, client.ObjectKey{Name: w.Spec.HardwareRef, Namespace: w.Namespace}, h); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("get hardware for traceparent stamping: %w", err)
+	}
+	if h.Annotations[v1alpha1.AnnotationTraceparent] == traceparent {
+		return nil
+	}
+	patch := client.MergeFrom(h.DeepCopy())
+	if h.Annotations == nil {
+		h.Annotations = map[string]string{}
+	}
+	h.Annotations[v1alpha1.AnnotationTraceparent] = traceparent
+	if err := cc.Patch(ctx, h, patch); err != nil {
+		return fmt.Errorf("patch hardware traceparent annotation: %w", err)
+	}
+	return nil
+}
+
 // toggleHardware toggles the allowPXE field on the hardware network interfaces.
 // It is idempotent and uses the Workflow.Status.BootOptionsStatus.AllowNetboot fields for idempotent checks.
 // This function will update the Workflow status.

@@ -873,7 +873,7 @@ func TestUpdateMsg(t *testing.T) {
 func TestOne(t *testing.T) {
 	t.Skip()
 	h := &Handler{}
-	_, _, err := h.readBackend(context.Background(), nil)
+	_, _, _, err := h.readBackend(context.Background(), nil)
 	t.Fatal(err)
 }
 
@@ -937,7 +937,7 @@ func TestReadBackend(t *testing.T) {
 				i := x.Compare(y)
 				return i == 0
 			})
-			gotDHCP, gotNetboot, err := s.readBackend(context.Background(), tt.input.ClientHWAddr)
+			gotDHCP, gotNetboot, _, err := s.readBackend(context.Background(), tt.input.ClientHWAddr)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("gotErr: %v, wantErr: %v", err, tt.wantErr)
 			}

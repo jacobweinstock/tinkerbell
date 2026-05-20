@@ -8,7 +8,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/insomniacslk/dhcp/dhcpv4"
+	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/data"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
 	"github.com/tinkerbell/tinkerbell/smee/internal/dhcp"
 	oteldhcp "github.com/tinkerbell/tinkerbell/smee/internal/dhcp/otel"
 	"go.opentelemetry.io/otel"
@@ -55,6 +57,25 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 	}
 	log := h.Log.WithValues("mac", p.Pkt.ClientHWAddr.String(), "xid", p.Pkt.TransactionID.String(), "interface", ifName)
 	tracer := otel.Tracer(tracerName)
+
+	// Pre-read the hardware so we can adopt its traceparent annotation (set
+	// by the workflow controller) BEFORE starting the main DHCP span. This
+	// is what stitches DHCP discover/offer/request/ack into the workflow
+	// trace; without it every smee DHCP span is an orphan root.
+	var (
+		preD  *dhcp.DHCP
+		preN  *dhcp.Netboot
+		preTP string
+		preErr error
+	)
+	switch p.Pkt.MessageType() {
+	case dhcpv4.MessageTypeDiscover, dhcpv4.MessageTypeRequest:
+		preD, preN, preTP, preErr = h.readBackend(ctx, p.Pkt.ClientHWAddr)
+		if preTP != "" {
+			ctx = tinkotel.ContextWithRemoteTraceparent(ctx, preTP)
+		}
+	}
+
 	var span trace.Span
 	ctx, span = tracer.Start(
 		ctx,
@@ -69,7 +90,7 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 	var reply *dhcpv4.DHCPv4
 	switch mt := p.Pkt.MessageType(); mt {
 	case dhcpv4.MessageTypeDiscover:
-		d, n, err := h.readBackend(ctx, p.Pkt.ClientHWAddr)
+		d, n, err := preD, preN, preErr
 		if err != nil {
 			if hardwareNotFound(err) {
 				span.SetStatus(codes.Ok, "no reservation found")
@@ -90,7 +111,7 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 		reply = h.updateMsg(ctx, p.Pkt, d, n, dhcpv4.MessageTypeOffer)
 		log = log.WithValues("type", dhcpv4.MessageTypeOffer.String())
 	case dhcpv4.MessageTypeRequest:
-		d, n, err := h.readBackend(ctx, p.Pkt.ClientHWAddr)
+		d, n, err := preD, preN, preErr
 		if err != nil {
 			if hardwareNotFound(err) {
 				span.SetStatus(codes.Ok, "no reservation found")
@@ -168,8 +189,11 @@ func replyDestination(directPeer net.Addr, giaddr net.IP) net.Addr {
 	return directPeer
 }
 
-// readBackend encapsulates the backend read and opentelemetry handling.
-func (h *Handler) readBackend(ctx context.Context, mac net.HardwareAddr) (*dhcp.DHCP, *dhcp.Netboot, error) {
+// readBackend encapsulates the backend read and opentelemetry handling. It
+// also returns the W3C traceparent published by the workflow controller on the
+// Hardware CR (under tinkerbell.AnnotationTraceparent), or the empty string if
+// none is set, so the caller can re-parent its span into the workflow trace.
+func (h *Handler) readBackend(ctx context.Context, mac net.HardwareAddr) (*dhcp.DHCP, *dhcp.Netboot, string, error) {
 	h.setDefaults()
 
 	tracer := otel.Tracer(tracerName)
@@ -180,20 +204,20 @@ func (h *Handler) readBackend(ctx context.Context, mac net.HardwareAddr) (*dhcp.
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	hw, err := dhcp.ConvertByMac(ctx, mac, spec)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 
-		return nil, nil, fmt.Errorf("failed to convert hardware data: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to convert hardware data: %w", err)
 	}
 
 	span.SetAttributes(hw.DHCP.EncodeToAttributes()...)
 	span.SetAttributes(hw.Netboot.EncodeToAttributes()...)
 	span.SetStatus(codes.Ok, "done reading from backend")
 
-	return hw.DHCP, hw.Netboot, nil
+	return hw.DHCP, hw.Netboot, spec.Annotations[tinkerbell.AnnotationTraceparent], nil
 }
 
 // updateMsg handles updating DHCP packets with the data from the backend.
