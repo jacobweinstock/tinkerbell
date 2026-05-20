@@ -193,6 +193,23 @@ type WorkflowStatus struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Conditions []WorkflowCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+
+	// Traceparent is the W3C TraceContext traceparent of the root span the
+	// workflow controller started on first reconcile (workflow.lifecycle). All
+	// subsequent reconciles and downstream components re-parent their spans
+	// into this trace so a single trace_id covers the workflow end-to-end.
+	//
+	// +optional
+	Traceparent string `json:"traceparent,omitempty"`
+
+	// PhaseTraceparents holds the W3C TraceContext traceparent for each
+	// completed/active workflow phase ("preBMC", "boot", "actions", "postBMC").
+	// Downstream components stamp the phase traceparent onto Hardware / Job /
+	// Task annotations so they can re-parent into the correct phase, and so
+	// later phases can attach trace.Links to earlier ones for readability.
+	//
+	// +optional
+	PhaseTraceparents map[string]string `json:"phaseTraceparents,omitempty"`
 }
 
 // JobStatus holds the state of a specific job.bmc.tinkerbell.org object created.

@@ -382,6 +382,16 @@ spec:
                 description: GlobalTimeout represents the max execution time.
                 format: int64
                 type: integer
+              phaseTraceparents:
+                additionalProperties:
+                  type: string
+                description: |-
+                  PhaseTraceparents holds the W3C TraceContext traceparent for each
+                  completed/active workflow phase ("preBMC", "boot", "actions", "postBMC").
+                  Downstream components stamp the phase traceparent onto Hardware / Job /
+                  Task annotations so they can re-parent into the correct phase, and so
+                  later phases can attach trace.Links to earlier ones for readability.
+                type: object
               state:
                 description: State is the current overall state of the Workflow.
                 type: string
@@ -459,6 +469,13 @@ spec:
                 description: |-
                   TemplateRendering indicates whether the template was rendered successfully.
                   Possible values are "successful" or "failed" or "unknown".
+                type: string
+              traceparent:
+                description: |-
+                  Traceparent is the W3C TraceContext traceparent of the root span the
+                  workflow controller started on first reconcile (workflow.lifecycle). All
+                  subsequent reconciles and downstream components re-parent their spans
+                  into this trace so a single trace_id covers the workflow end-to-end.
                 type: string
             type: object
         type: object

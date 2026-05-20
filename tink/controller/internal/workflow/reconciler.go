@@ -11,6 +11,9 @@ import (
 	"github.com/go-logr/logr"
 	v1alpha1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/journal"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,6 +109,14 @@ type state struct {
 	client   ctrlclient.Client
 	workflow *v1alpha1.Workflow
 	backoff  *backoff.ExponentialBackOff
+	// phase is the workflow phase this reconcile pass belongs to (e.g.
+	// phasePreBMC, phasePostBMC). Used to label Job annotations so Rufio
+	// can re-parent into the matching phase span.
+	phase string
+	// phaseTraceparent is the W3C traceparent of the phase span persisted in
+	// workflow.Status.PhaseTraceparents[phase]. Stamped onto Job CRs at
+	// creation time so downstream reconcilers stitch in.
+	phaseTraceparent string
 }
 
 // +kubebuilder:rbac:groups=tinkerbell.org,resources=hardware;hardware/status,verbs=get;list;watch;update;patch
@@ -140,6 +151,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	wflow := stored.DeepCopy()
 
+	// Ensure the workflow has a root traceparent and re-parent ctx into it so
+	// every span, log, and outbound annotation in this reconcile pass shares
+	// the workflow's trace_id. The status mutation (if any) is patched at the
+	// end of the switch via mergePatchStatus.
+	rootTP, _ := ensureRootTraceparent(ctx, wflow)
+	ctx = tinkotel.ContextWithRemoteTraceparent(ctx, rootTP)
+	ctx, reconcileSpan := tracer().Start(ctx, "workflow.reconcile",
+		trace.WithAttributes(
+			attribute.String("workflow.name", wflow.Name),
+			attribute.String("workflow.namespace", wflow.Namespace),
+			attribute.String("workflow.state", string(wflow.Status.State)),
+		),
+	)
+	defer reconcileSpan.End()
+
 	switch wflow.Status.State {
 	case "":
 		journal.Log(ctx, "new workflow")
@@ -156,10 +182,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return resp, errors.Join(err, mergePatchStatus(ctx, r.client, stored, wflow))
 	case v1alpha1.WorkflowStatePreparing:
 		journal.Log(ctx, "preparing workflow")
+		phaseTP, _ := ensurePhaseTraceparent(ctx, wflow, phasePreBMC)
 		s := &state{
-			client:   r.client,
-			workflow: wflow,
-			backoff:  r.backoff,
+			client:           r.client,
+			workflow:         wflow,
+			backoff:          r.backoff,
+			phase:            phasePreBMC,
+			phaseTraceparent: phaseTP,
 		}
 		resp, err := s.prepareWorkflow(ctx)
 
@@ -199,10 +228,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, mergePatchStatus(ctx, r.client, stored, wflow)
 	case v1alpha1.WorkflowStatePost:
 		journal.Log(ctx, "post actions")
+		phaseTP, _ := ensurePhaseTraceparent(ctx, wflow, phasePostBMC)
 		s := &state{
-			client:   r.client,
-			workflow: wflow,
-			backoff:  r.backoff,
+			client:           r.client,
+			workflow:         wflow,
+			backoff:          r.backoff,
+			phase:            phasePostBMC,
+			phaseTraceparent: phaseTP,
 		}
 		rc, err := s.postActions(ctx)
 

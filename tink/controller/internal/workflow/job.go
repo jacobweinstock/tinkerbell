@@ -180,7 +180,7 @@ func (s *state) createJob(ctx context.Context, actions []bmc.Action, name jobNam
 		},
 	}
 
-	if err := create(ctx, s.client, name.String(), hw, s.workflow.Namespace, actions, ownerRef); err != nil {
+	if err := create(ctx, s.client, name.String(), hw, s.workflow.Namespace, actions, ownerRef, s.phaseTraceparent); err != nil {
 		return reconcile.Result{}, fmt.Errorf("error creating job: %w", err)
 	}
 	journal.Log(ctx, "job created", "name", name)
@@ -225,15 +225,21 @@ func (s *state) trackRunningJob(ctx context.Context, name jobName) (reconcile.Re
 	return reconcile.Result{Requeue: true}, trackedStateRunning, nil
 }
 
-func create(ctx context.Context, cc client.Client, name string, hw *v1alpha1.Hardware, ns string, tasks []bmc.Action, ownerRef []metav1.OwnerReference) error {
+func create(ctx context.Context, cc client.Client, name string, hw *v1alpha1.Hardware, ns string, tasks []bmc.Action, ownerRef []metav1.OwnerReference, phaseTraceparent string) error {
 	journal.Log(ctx, "creating job", "name", name)
+	annotations := map[string]string{
+		"tink-controller-auto-created": "true",
+	}
+	// Stamp the workflow's phase traceparent so the Rufio Job + Task
+	// reconcilers can re-parent into the right phase span (Phase 2).
+	if phaseTraceparent != "" {
+		annotations[v1alpha1.AnnotationTraceparent] = phaseTraceparent
+	}
 	if err := cc.Create(ctx, &bmc.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			Annotations: map[string]string{
-				"tink-controller-auto-created": "true",
-			},
+			Name:        name,
+			Namespace:   ns,
+			Annotations: annotations,
 			Labels: map[string]string{
 				"tink-controller-auto-created": "true",
 			},
