@@ -48,6 +48,7 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 		EnableSecondStar:     true,
 		EnableUI:             true,
 		EnableCRDMigrations:  true,
+		OTELLogsEnabled:      true,
 		HTTPPort:             defaultHTTPPort,
 		HTTPSPort:            defaultHTTPSPort,
 		BindAddr: func() netip.Addr {
@@ -235,6 +236,22 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 	}
 	ctx = otelCtx
 	defer otelShutdown()
+
+	// Logs signal: optional OTLP export of application logs to the same
+	// collector endpoint. No-op when OTELEndpoint is empty or the toggle
+	// is disabled.
+	if globals.OTELLogsEnabled {
+		_, otelLogsShutdown, err := otel.InitLogs(ctx, otel.Config{
+			Servicename: "tinkerbell",
+			Endpoint:    globals.OTELEndpoint,
+			Insecure:    globals.OTELInsecure,
+			Logger:      log.WithName("otel-logs"),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize OpenTelemetry logs: %w", err)
+		}
+		defer func() { _ = otelLogsShutdown() }()
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	// Etcd server

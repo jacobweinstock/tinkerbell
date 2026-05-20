@@ -15,6 +15,7 @@ type GlobalConfig struct {
 	BackendKubeNamespace string
 	OTELEndpoint         string
 	OTELInsecure         bool
+	OTELLogsEnabled      bool
 	TrustedProxies       []netip.Prefix
 	PublicIP             netip.Addr
 	BindAddr             netip.Addr
@@ -70,6 +71,7 @@ func RegisterGlobal(fs *Set, gc *GlobalConfig) {
 	fs.Register(LogLevelConfig, ffval.NewValueDefault(&gc.LogLevel, gc.LogLevel))
 	fs.Register(OTELEndpoint, ffval.NewValueDefault(&gc.OTELEndpoint, gc.OTELEndpoint))
 	fs.Register(OTELInsecure, ffval.NewValueDefault(&gc.OTELInsecure, gc.OTELInsecure))
+	fs.Register(OTELLogsEnabled, ffval.NewValueDefault(&gc.OTELLogsEnabled, gc.OTELLogsEnabled))
 	fs.Register(PublicIP, &ntip.Addr{Addr: &gc.PublicIP})
 	fs.Register(TLSCertFile, ffval.NewValueDefault(&gc.TLS.CertFile, gc.TLS.CertFile))
 	fs.Register(TLSKeyFile, ffval.NewValueDefault(&gc.TLS.KeyFile, gc.TLS.KeyFile))
@@ -130,6 +132,11 @@ var OTELEndpoint = Config{
 var OTELInsecure = Config{
 	Name:  "otel-insecure",
 	Usage: "[otel] OpenTelemetry collector insecure",
+}
+
+var OTELLogsEnabled = Config{
+	Name:  "otel-logs-enabled",
+	Usage: "[otel] also export application logs via OTLP (no-op when --otel-endpoint is empty)",
 }
 
 // Shared flags.

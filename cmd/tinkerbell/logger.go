@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/tinkerbell/tinkerbell/pkg/otel"
 )
 
 // getLogger returns a logger based on the configuration.
@@ -79,7 +81,47 @@ func defaultLogger(level int) logr.Logger {
 		Level:       slog.Level(-level),
 		ReplaceAttr: customAttr,
 	}
-	log := slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	log := slog.New(teeHandler{
+		primary: slog.NewJSONHandler(os.Stdout, opts),
+		// otelslog is a no-op until pkg/otel.InitLogs installs a global
+		// LoggerProvider; safe to wire unconditionally.
+		secondary: otel.NewSlogHandler("tinkerbell"),
+	})
 
 	return logr.FromSlogHandler(log.Handler())
+}
+
+// teeHandler fans out every record to two slog.Handlers (stdout JSON + OTel
+// log bridge). Both handlers see Handle/WithAttrs/WithGroup; Enabled returns
+// true if either side wants the record so OTel-only consumers can pick up
+// records the primary would have filtered.
+type teeHandler struct {
+	primary   slog.Handler
+	secondary slog.Handler
+}
+
+func (h teeHandler) Enabled(ctx context.Context, l slog.Level) bool {
+	return h.primary.Enabled(ctx, l) || h.secondary.Enabled(ctx, l)
+}
+
+func (h teeHandler) Handle(ctx context.Context, r slog.Record) error {
+	var primaryErr, secondaryErr error
+	if h.primary.Enabled(ctx, r.Level) {
+		primaryErr = h.primary.Handle(ctx, r.Clone())
+	}
+	if h.secondary.Enabled(ctx, r.Level) {
+		secondaryErr = h.secondary.Handle(ctx, r)
+	}
+	if primaryErr != nil {
+		return primaryErr
+	}
+	return secondaryErr
+}
+
+func (h teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return teeHandler{primary: h.primary.WithAttrs(attrs), secondary: h.secondary.WithAttrs(attrs)}
+}
+
+func (h teeHandler) WithGroup(name string) slog.Handler {
+	return teeHandler{primary: h.primary.WithGroup(name), secondary: h.secondary.WithGroup(name)}
 }

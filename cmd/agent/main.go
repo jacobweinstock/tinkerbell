@@ -19,6 +19,7 @@ import (
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tinkerbell/tinkerbell/pkg/build"
+	"github.com/tinkerbell/tinkerbell/pkg/otel"
 	"github.com/tinkerbell/tinkerbell/tink/agent"
 )
 
@@ -87,6 +88,13 @@ func main() {
 	log := defaultLogger(c.LogLevel).WithValues("agentID", c.AgentID)
 	log.Info("starting Agent", "runtime", c.Options.RuntimeSelected, "transport", c.Options.TransportSelected, "version", build.GitRevision())
 	log.V(4).Info("agent configuration", "config", c)
+
+	// Install the W3C TraceContext propagator and lift any TRACEPARENT env
+	// var into the context so downstream agent code can re-parent spans into
+	// the trace started by the workflow controller. The kernel-cmdline path
+	// (Phase 3) sets TRACEPARENT for the agent before this binary starts.
+	otel.EnsureW3CPropagator()
+	ctx = otel.ContextWithEnvTraceparent(ctx)
 
 	if err := c.Options.ConfigureAndRun(ctx, log, c.AgentID); err != nil {
 		log.Error(err, "failed to configure and run agent")
