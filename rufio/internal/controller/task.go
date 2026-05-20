@@ -22,6 +22,11 @@ import (
 	bmclib "github.com/bmc-toolbox/bmclib/v2"
 	"github.com/go-logr/logr"
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/bmc"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -78,6 +83,18 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		task.HasCondition(bmc.TaskCompleted, bmc.ConditionTrue) {
 		return ctrl.Result{}, nil
 	}
+
+	// Re-parent into the workflow phase trace propagated from the parent
+	// Job's annotation.
+	ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, task.GetAnnotations())
+	ctx, span := otel.Tracer(rufioTracerName).Start(ctx, "rufio.task.reconcile",
+		trace.WithAttributes(
+			attribute.String("rufio.task.name", task.Name),
+			attribute.String("rufio.task.namespace", task.Namespace),
+			attribute.String("bmc.host", task.Spec.Connection.Host),
+		),
+	)
+	defer span.End()
 
 	// Create a patch from the initial Task object
 	// Patch is used to update Status after reconciliation
@@ -201,47 +218,76 @@ func (r *TaskReconciler) doReconcile(ctx context.Context, task *bmc.Task, taskPa
 
 // runTask executes the defined Task in a Task.
 func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task bmc.Action, bmcClient *bmclib.Client) error {
+	tracer := otel.Tracer(rufioTracerName)
 	if task.PowerAction != nil {
+		ctx, span := tracer.Start(ctx, "bmc.set_power_state",
+			trace.WithAttributes(attribute.String("bmc.power_action", string(*task.PowerAction))))
+		defer span.End()
 		ok, err := bmcClient.SetPowerState(ctx, string(*task.PowerAction))
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
 			return fmt.Errorf("failed to perform PowerAction: %w", err)
 		}
 		md := bmcClient.GetMetadata()
+		span.SetAttributes(attribute.String("bmc.provider", md.SuccessfulProvider), attribute.Bool("bmc.ok", ok))
 		logger.Info("power state set successfully", "providersAttempted", md.ProvidersAttempted, "successfulProvider", md.SuccessfulProvider, "ok", ok)
 
 		return nil
 	}
 
 	if task.OneTimeBootDeviceAction != nil { //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility. We will remove in a future release.
+		ctx, span := tracer.Start(ctx, "bmc.set_boot_device",
+			trace.WithAttributes(
+				attribute.String("bmc.boot_device", string(task.OneTimeBootDeviceAction.Devices[0])), //nolint:staticcheck
+				attribute.Bool("bmc.persistent", false),
+			))
+		defer span.End()
 		// OneTimeBootDeviceAction currently sets the first boot device from Devices.
 		// setPersistent is false.
 		ok, err := bmcClient.SetBootDevice(ctx, string(task.OneTimeBootDeviceAction.Devices[0]), false, task.OneTimeBootDeviceAction.EFIBoot) //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility. We will remove in a future release.
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
 			return fmt.Errorf("failed to perform OneTimeBootDeviceAction: %w", err)
 		}
 		md := bmcClient.GetMetadata()
+		span.SetAttributes(attribute.String("bmc.provider", md.SuccessfulProvider), attribute.Bool("bmc.ok", ok))
 		logger.Info("one time boot device set successfully", "notice", "oneTimeBootDeviceAction is deprecated and will be remove in a future release. Please use bootDevice instead.", "providersAttempted", md.ProvidersAttempted, "successfulProvider", md.SuccessfulProvider, "ok", ok)
 
 		return nil
 	}
 
 	if task.BootDevice != nil {
+		ctx, span := tracer.Start(ctx, "bmc.set_boot_device",
+			trace.WithAttributes(
+				attribute.String("bmc.boot_device", task.BootDevice.Device.String()),
+				attribute.Bool("bmc.persistent", task.BootDevice.Persistent),
+			))
+		defer span.End()
 		ok, err := bmcClient.SetBootDevice(ctx, task.BootDevice.Device.String(), task.BootDevice.Persistent, task.BootDevice.EFIBoot)
 		if err != nil || !ok {
+			if err != nil {
+				span.SetStatus(codes.Error, err.Error())
+			}
 			return fmt.Errorf("failed to set BootDevice, ok: %v, err: %w", ok, err)
 		}
 		md := bmcClient.GetMetadata()
+		span.SetAttributes(attribute.String("bmc.provider", md.SuccessfulProvider), attribute.Bool("bmc.ok", ok))
 		logger.Info("boot device set successfully", "providersAttempted", md.ProvidersAttempted, "successfulProvider", md.SuccessfulProvider, "ok", ok)
 
 		return nil
 	}
 
 	if task.VirtualMediaAction != nil {
+		ctx, span := tracer.Start(ctx, "bmc.set_virtual_media",
+			trace.WithAttributes(attribute.String("bmc.virtual_media.kind", string(task.VirtualMediaAction.Kind))))
+		defer span.End()
 		ok, err := bmcClient.SetVirtualMedia(ctx, string(task.VirtualMediaAction.Kind), task.VirtualMediaAction.MediaURL)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
 			return fmt.Errorf("failed to perform SetVirtualMedia: %w", err)
 		}
 		md := bmcClient.GetMetadata()
+		span.SetAttributes(attribute.String("bmc.provider", md.SuccessfulProvider), attribute.Bool("bmc.ok", ok))
 		logger.Info("virtual media set successfully", "providersAttempted", md.ProvidersAttempted, "successfulProvider", md.SuccessfulProvider, "ok", ok)
 
 		return nil

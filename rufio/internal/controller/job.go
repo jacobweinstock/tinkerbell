@@ -21,6 +21,11 @@ import (
 	"fmt"
 
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/bmc"
+	v1alpha1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,6 +35,10 @@ import (
 	ctrlcontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
+
+// rufioTracerName is the OTel instrumentation scope name for all rufio
+// controller spans.
+const rufioTracerName = "github.com/tinkerbell/tinkerbell/rufio/controller"
 
 // Index key for Job Owner Name.
 const jobOwnerKey = ".metadata.controller"
@@ -79,6 +88,19 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		job.HasCondition(bmc.JobFailed, bmc.ConditionTrue) {
 		return ctrl.Result{}, nil
 	}
+
+	// Re-parent into the workflow phase trace the controller stamped on the
+	// Job at creation time, if any. Without this, every rufio span is an
+	// orphan trace.
+	ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, job.GetAnnotations())
+	ctx, span := otel.Tracer(rufioTracerName).Start(ctx, "rufio.job.reconcile",
+		trace.WithAttributes(
+			attribute.String("rufio.job.name", job.Name),
+			attribute.String("rufio.job.namespace", job.Namespace),
+			attribute.String("rufio.machine.name", job.Spec.MachineRef.Name),
+		),
+	)
+	defer span.End()
 
 	// Create a patch from the initial Job object
 	// Patch is used to update Status after reconciliation
@@ -182,6 +204,13 @@ func (r *JobReconciler) getMachine(ctx context.Context, reference bmc.MachineRef
 // createTaskWithOwner creates a Task object with an OwnerReference set to the Job.
 func (r *JobReconciler) createTaskWithOwner(ctx context.Context, job bmc.Job, taskIndex int, conn bmc.Connection) error {
 	isController := true
+	// Propagate the workflow phase traceparent (set by the workflow
+	// controller on the parent Job) onto the Task so the Task reconciler
+	// can also stitch into the trace.
+	annotations := map[string]string{}
+	if tp := job.GetAnnotations()[v1alpha1.AnnotationTraceparent]; tp != "" {
+		annotations[v1alpha1.AnnotationTraceparent] = tp
+	}
 	task := &bmc.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bmc.FormatTaskName(job, taskIndex),
@@ -189,6 +218,7 @@ func (r *JobReconciler) createTaskWithOwner(ctx context.Context, job bmc.Job, ta
 			Labels: map[string]string{
 				"owner-name": job.Name,
 			},
+			Annotations: annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: job.APIVersion,
