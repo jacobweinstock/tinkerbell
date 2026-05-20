@@ -90,11 +90,39 @@ func main() {
 	log.V(4).Info("agent configuration", "config", c)
 
 	// Install the W3C TraceContext propagator and lift any TRACEPARENT env
-	// var into the context so downstream agent code can re-parent spans into
-	// the trace started by the workflow controller. The kernel-cmdline path
-	// (Phase 3) sets TRACEPARENT for the agent before this binary starts.
+	// var (or tinkerbell_traceparent= kernel cmdline arg, as injected by
+	// smee's iPXE template in Phase 3) into the context so downstream agent
+	// code can re-parent spans into the workflow trace.
 	otel.EnsureW3CPropagator()
 	ctx = otel.ContextWithEnvTraceparent(ctx)
+	ctx = otel.ContextWithCmdlineTraceparent(ctx)
+
+	// Stand up the agent's OTel tracer + log providers pointed at the
+	// tink-server gRPC endpoint. tink-server hosts an OTLP relay that
+	// forwards what we send here to the operator-configured external
+	// collector, so the agent never needs to know the collector address.
+	// Skipped when the gRPC transport is not in use (file/NATS) -- those
+	// modes have no relay endpoint to target.
+	if c.Options.TransportSelected == agent.GRPCTransportType && c.Options.Transport.GRPC.ServerAddrPort != "" {
+		otelCfg := otel.Config{
+			Servicename: name,
+			Endpoint:    c.Options.Transport.GRPC.ServerAddrPort,
+			Insecure:    c.Options.Transport.GRPC.TLSInsecure || !c.Options.Transport.GRPC.TLSEnabled,
+			Logger:      log,
+		}
+		newCtx, otelShutdown, err := otel.Init(ctx, otelCfg)
+		if err != nil {
+			log.Error(err, "failed to init OpenTelemetry; continuing without traces")
+		} else {
+			ctx = newCtx
+			defer otelShutdown()
+		}
+		if _, logsShutdown, err := otel.InitLogs(ctx, otelCfg); err != nil {
+			log.Error(err, "failed to init OpenTelemetry logs; continuing without log export")
+		} else {
+			defer func() { _ = logsShutdown() }()
+		}
+	}
 
 	if err := c.Options.ConfigureAndRun(ctx, log, c.AgentID); err != nil {
 		log.Error(err, "failed to configure and run agent")

@@ -395,6 +395,12 @@ func Execute(ctx context.Context, cancel context.CancelFunc, args []string) erro
 			return nil
 		}
 		ll := ternary((ts.LogLevel != 0), ts.LogLevel, globals.LogLevel)
+		// Forward agent-emitted OTLP back out to the operator's collector via
+		// the same endpoint the rest of tinkerbell already uses; agents can't
+		// reach the collector directly because the only network egress route
+		// from a booted target is the tink-server gRPC port.
+		ts.Config.OTLPRelay.Endpoint = globals.OTELEndpoint
+		ts.Config.OTLPRelay.Insecure = globals.OTELInsecure
 		if err := ts.Config.Start(ctx, getLogger(ll).WithName("tink-server")); err != nil {
 			return fmt.Errorf("failed to start tink server service: %w", err)
 		}

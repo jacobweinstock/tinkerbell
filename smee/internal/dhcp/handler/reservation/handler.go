@@ -63,9 +63,9 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 	// is what stitches DHCP discover/offer/request/ack into the workflow
 	// trace; without it every smee DHCP span is an orphan root.
 	var (
-		preD  *dhcp.DHCP
-		preN  *dhcp.Netboot
-		preTP string
+		preD   *dhcp.DHCP
+		preN   *dhcp.Netboot
+		preTP  string
 		preErr error
 	)
 	switch p.Pkt.MessageType() {

@@ -5,6 +5,8 @@ package otel
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	tinkv1a1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"go.opentelemetry.io/otel"
@@ -138,4 +140,42 @@ func ExtractTraceparentFromAnnotations(ctx context.Context, annotations map[stri
 	}
 	newCtx := ContextWithRemoteTraceparent(ctx, tp)
 	return newCtx, newCtx != ctx
+}
+
+// CmdlineTraceparentKey is the kernel-cmdline argument smee's iPXE template
+// uses to forward the workflow traceparent into the booted OS. Exported so
+// the agent (or any in-OS consumer) can find it consistently.
+const CmdlineTraceparentKey = "tinkerbell_traceparent"
+
+// ContextWithCmdlineTraceparent looks for tinkerbell_traceparent=... in
+// /proc/cmdline (the carrier used by smee's iPXE script template) and, when
+// present, returns a context whose remote parent SpanContext is that
+// traceparent. When the file cannot be read, the key is absent, or the value
+// is invalid, the original context is returned unchanged.
+//
+// This is the in-OS counterpart to ContextWithEnvTraceparent: it is what lets
+// tink-agent stitch its spans into the workflow trace on first boot when no
+// TRACEPARENT env var has been set by an outer process.
+func ContextWithCmdlineTraceparent(ctx context.Context) context.Context {
+	if tp := traceparentFromCmdline("/proc/cmdline"); tp != "" {
+		return ContextWithRemoteTraceparent(ctx, tp)
+	}
+	return ctx
+}
+
+// traceparentFromCmdline parses the named cmdline-style file and returns the
+// value of CmdlineTraceparentKey, or "" if not found / unreadable. Extracted
+// for testability.
+func traceparentFromCmdline(path string) string {
+	b, err := os.ReadFile(path) //nolint:gosec // path is provided by caller (default /proc/cmdline)
+	if err != nil {
+		return ""
+	}
+	prefix := CmdlineTraceparentKey + "="
+	for _, tok := range strings.Fields(string(b)) {
+		if v, ok := strings.CutPrefix(tok, prefix); ok {
+			return v
+		}
+	}
+	return ""
 }

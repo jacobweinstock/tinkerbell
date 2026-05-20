@@ -20,8 +20,15 @@ import (
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/transport/file"
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/transport/grpc"
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/transport/nats"
+	"go.opentelemetry.io/otel"
+	otelattribute "go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
+
+// agentTracerName is the OTel instrumentation scope for tink-agent spans.
+const agentTracerName = "github.com/tinkerbell/tinkerbell/tink/agent"
 
 // TransportReader provides a method to read an action.
 type TransportReader interface {
@@ -100,11 +107,27 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 		}
 
 		log.Info("received action", "action", action)
-		if err := c.TransportWriter.Write(ctx, spec.Event{Action: action, Message: "running action", State: spec.StateRunning}); err != nil {
+
+		// One span per Action: covers the lifetime from "received" through
+		// final status report so the action's runtime work, its events, and
+		// any errors are visible together under the workflow trace.
+		actionCtx, actionSpan := otel.Tracer(agentTracerName).Start(ctx, "action.execute",
+			trace.WithAttributes(
+				otelattribute.String("action.id", action.ID),
+				otelattribute.String("action.name", action.Name),
+				otelattribute.String("action.image", action.Image),
+				otelattribute.String("action.workflow.id", action.WorkflowID),
+			),
+		)
+
+		if err := c.TransportWriter.Write(actionCtx, spec.Event{Action: action, Message: "running action", State: spec.StateRunning}); err != nil {
 			if errors.Is(err, context.Canceled) {
+				actionSpan.End()
 				return
 			}
 			log.Info("error writing event", "error", err)
+			actionSpan.SetStatus(codes.Error, err.Error())
+			actionSpan.End()
 			doBackoff <- true
 			continue
 		}
@@ -116,11 +139,12 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 
 		responseEvent := spec.Event{}
 		action.ExecutionStart = time.Now().UTC()
-		timeoutCtx, timeoutDone := context.WithTimeout(ctx, time.Duration(action.TimeoutSeconds)*time.Second)
+		timeoutCtx, timeoutDone := context.WithTimeout(actionCtx, time.Duration(action.TimeoutSeconds)*time.Second)
 		for i := 1; i <= retries; i++ {
 			if err := c.RuntimeExecutor.Execute(timeoutCtx, action); err != nil {
 				log.Info("error executing action", "error", err, "maxRetries", retries, "currentTry", i)
 				state = spec.StateFailure
+				actionSpan.RecordError(err, trace.WithAttributes(otelattribute.Int("action.attempt", i)))
 				if errors.Is(err, context.DeadlineExceeded) {
 					state = spec.StateTimeout
 					timeoutDone()
@@ -155,7 +179,7 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 			MaxInterval:         c.Backoff.MaxInterval,
 		}
 		writeOp := func() (any, error) {
-			return nil, c.TransportWriter.Write(ctx, responseEvent)
+			return nil, c.TransportWriter.Write(actionCtx, responseEvent)
 		}
 		if _, err := backoff.Retry(ctx, writeOp,
 			backoff.WithBackOff(reportBackoff),
@@ -165,12 +189,20 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 			}),
 		); err != nil {
 			if ctx.Err() != nil {
+				actionSpan.End()
 				return
 			}
 			log.Info("permanent error reporting action", "error", err)
+			actionSpan.SetStatus(codes.Error, err.Error())
+			actionSpan.End()
 			return
 		}
 		log.Info("reported action status", "action", action, "state", state)
+		actionSpan.SetAttributes(otelattribute.String("action.state", string(state)))
+		if state != spec.StateSuccess {
+			actionSpan.SetStatus(codes.Error, string(state))
+		}
+		actionSpan.End()
 
 		c.Backoff.Reset() // Reset the backoff after a successful run
 	}

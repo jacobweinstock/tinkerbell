@@ -37,6 +37,15 @@ type Config struct {
 	Logger       logr.Logger
 	Auto         AutoCapabilities
 	TLS          TLS
+	OTLPRelay    OTLPRelayConfig
+}
+
+// OTLPRelayConfig configures the agent-facing OTLP receiver that forwards to
+// the operator's upstream collector. When Endpoint is empty the relay is
+// not registered.
+type OTLPRelayConfig struct {
+	Endpoint string
+	Insecure bool
 }
 
 type AutoCapabilities struct {
@@ -107,6 +116,15 @@ func WithTLSCert(cert credentials.TransportCredentials) Option {
 	}
 }
 
+// WithOTLPRelay configures the OTLP receiver that forwards trace+log payloads
+// from agents back out to the operator-configured external collector.
+func WithOTLPRelay(endpoint string, insecure bool) Option {
+	return func(c *Config) {
+		c.OTLPRelay.Endpoint = endpoint
+		c.OTLPRelay.Insecure = insecure
+	}
+}
+
 func NewConfig(opts ...Option) *Config {
 	c := &Config{}
 	for _, opt := range opts {
@@ -150,6 +168,16 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	proto.RegisterWorkflowServiceServer(gs, s)
 	reflection.Register(gs)
 	grpcServerMetrics.InitializeMetrics(gs)
+
+	relay, err := NewOTLPRelay(ctx, log, c.OTLPRelay.Endpoint, c.OTLPRelay.Insecure)
+	if err != nil {
+		log.Error(err, "failed to start OTLP relay; continuing without it")
+	}
+	if relay != nil {
+		relay.Register(gs)
+		defer func() { _ = relay.Close() }()
+		log.Info("OTLP relay registered", "upstream", c.OTLPRelay.Endpoint)
+	}
 
 	n := net.ListenConfig{}
 	lis, err := n.Listen(ctx, "tcp", c.BindAddrPort.String())
