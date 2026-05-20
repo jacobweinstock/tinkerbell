@@ -10,6 +10,7 @@ import (
 
 	v1alpha1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/data"
+	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
 	"github.com/tinkerbell/tinkerbell/tootles/internal/frontend/ec2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -34,16 +35,22 @@ func New(filterer HardwareFilterer) *Backend {
 
 // GetHackInstance returns a HackInstance for the hardware associated with the given IP.
 func (b *Backend) GetHackInstance(ctx context.Context, ip string) (data.HackInstance, error) {
-	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "tootles.backend.GetHackInstance")
+	// Look up the Hardware before opening the span so the span can be parented
+	// to the workflow trace via the tinkerbell.org/traceparent annotation that
+	// the workflow controller stamps on Hardware. Without this, tootles spans
+	// are orphan roots even though every cloud-init request happens during a
+	// workflow.
+	hw, ferr := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByIPAddress: ip})
+	if hw != nil {
+		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
+	}
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetHackInstance")
 	defer span.End()
 
-	hw, err := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByIPAddress: ip})
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return data.HackInstance{}, err
+	if ferr != nil {
+		span.SetStatus(codes.Error, ferr.Error())
+		return data.HackInstance{}, ferr
 	}
-
 	span.SetStatus(codes.Ok, "")
 
 	return toHackInstance(*hw)
@@ -51,16 +58,17 @@ func (b *Backend) GetHackInstance(ctx context.Context, ip string) (data.HackInst
 
 // GetEC2Instance returns an Ec2Instance for the hardware associated with the given IP.
 func (b *Backend) GetEC2Instance(ctx context.Context, ip string) (data.Ec2Instance, error) {
-	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "tootles.backend.GetEC2Instance")
+	hw, ferr := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByIPAddress: ip})
+	if hw != nil {
+		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
+	}
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetEC2Instance")
 	defer span.End()
 
-	hw, err := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByIPAddress: ip})
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return data.Ec2Instance{}, toInstanceNotFoundErr(err)
+	if ferr != nil {
+		span.SetStatus(codes.Error, ferr.Error())
+		return data.Ec2Instance{}, toInstanceNotFoundErr(ferr)
 	}
-
 	span.SetStatus(codes.Ok, "")
 
 	return toEC2Instance(*hw), nil
@@ -68,16 +76,17 @@ func (b *Backend) GetEC2Instance(ctx context.Context, ip string) (data.Ec2Instan
 
 // GetEC2InstanceByInstanceID returns an Ec2Instance for the hardware with the given instance ID.
 func (b *Backend) GetEC2InstanceByInstanceID(ctx context.Context, instanceID string) (data.Ec2Instance, error) {
-	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "tootles.backend.GetEC2InstanceByInstanceID")
+	hw, ferr := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByInstanceID: instanceID})
+	if hw != nil {
+		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
+	}
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetEC2InstanceByInstanceID")
 	defer span.End()
 
-	hw, err := b.filterer.FilterHardware(ctx, data.HardwareFilter{ByInstanceID: instanceID})
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return data.Ec2Instance{}, toInstanceNotFoundErr(err)
+	if ferr != nil {
+		span.SetStatus(codes.Error, ferr.Error())
+		return data.Ec2Instance{}, toInstanceNotFoundErr(ferr)
 	}
-
 	span.SetStatus(codes.Ok, "")
 
 	return toEC2Instance(*hw), nil
