@@ -21,7 +21,7 @@ const (
 // FilterBMCMachine looks up a machine.bmc.tinkerbell.org object based on the bmcRef in the hardware object matching the given filter.
 func (b *Backend) FilterBMCMachine(ctx context.Context, opts data.HardwareFilter) (*data.BMCMachine, error) {
 	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "backend.kube.FilterBMCMachine")
+	ctx, span := tracer.Start(ctx, "backend.kube.filterBMCMachine")
 	defer span.End()
 
 	hw, err := b.FilterHardware(ctx, opts)
@@ -89,7 +89,7 @@ func (b *Backend) filterMachine(ctx context.Context, name string) (*bmc.Machine,
 // It expects the Secret to contain "username" and "password" keys in its data.
 func (b *Backend) ReadAuthSecret(ctx context.Context, name, namespace string) (string, string, error) {
 	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "backend.kube.ReadAuthSecret")
+	ctx, span := tracer.Start(ctx, "backend.kube.readAuthSecret")
 	defer span.End()
 
 	secret := &v1.Secret{}

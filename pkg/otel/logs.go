@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	otelglobal "go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	otlploggrpc "go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	otellog "go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/sdk/log"
@@ -31,7 +32,11 @@ func InitLogs(ctx context.Context, c Config) (*log.LoggerProvider, func() error,
 		return nil, func() error { return nil }, nil
 	}
 
-	res, err := resource.New(ctx, resource.WithAttributes(semconv.ServiceNameKey.String(c.Servicename)))
+	attrs := []attribute.KeyValue{semconv.ServiceNameKey.String(c.Servicename)}
+	if c.InstanceID != "" {
+		attrs = append(attrs, attribute.String("service.instance.id", c.InstanceID))
+	}
+	res, err := resource.New(ctx, resource.WithAttributes(attrs...))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create OpenTelemetry logs resource: %w", err)
 	}

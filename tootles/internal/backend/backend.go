@@ -13,7 +13,9 @@ import (
 	tinkotel "github.com/tinkerbell/tinkerbell/pkg/otel"
 	"github.com/tinkerbell/tinkerbell/tootles/internal/frontend/ec2"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const tracerName = "github.com/tinkerbell/tinkerbell"
@@ -33,6 +35,27 @@ func New(filterer HardwareFilterer) *Backend {
 	return &Backend{filterer: filterer}
 }
 
+// setCommonAttrs attaches the standard tootles span attributes (lookup type,
+// lookup key, endpoint, hardware identity when known) to span. ctx may carry
+// a request endpoint set by the EC2 frontend via ec2.WithEndpoint; if absent,
+// the endpoint attribute is omitted. hw may be nil when the lookup failed.
+func setCommonAttrs(ctx context.Context, span trace.Span, lookupType, lookupKey string, hw *v1alpha1.Hardware) {
+	attrs := []attribute.KeyValue{
+		attribute.String("tootles.lookup_type", lookupType),
+		attribute.String("tootles.lookup_key", lookupKey),
+	}
+	if ep := ec2.EndpointFromContext(ctx); ep != "" {
+		attrs = append(attrs, attribute.String("tootles.endpoint", ep))
+	}
+	if hw != nil {
+		attrs = append(attrs,
+			attribute.String("tootles.hardware.name", hw.Name),
+			attribute.String("tootles.hardware.namespace", hw.Namespace),
+		)
+	}
+	span.SetAttributes(attrs...)
+}
+
 // GetHackInstance returns a HackInstance for the hardware associated with the given IP.
 func (b *Backend) GetHackInstance(ctx context.Context, ip string) (data.HackInstance, error) {
 	// Look up the Hardware before opening the span so the span can be parented
@@ -44,10 +67,12 @@ func (b *Backend) GetHackInstance(ctx context.Context, ip string) (data.HackInst
 	if hw != nil {
 		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
 	}
-	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetHackInstance")
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.getHackInstance")
 	defer span.End()
+	setCommonAttrs(ctx, span, "ByIPAddress", ip, hw)
 
 	if ferr != nil {
+		span.SetAttributes(attribute.String("tootles.error", ferr.Error()))
 		span.SetStatus(codes.Error, ferr.Error())
 		return data.HackInstance{}, ferr
 	}
@@ -62,10 +87,12 @@ func (b *Backend) GetEC2Instance(ctx context.Context, ip string) (data.Ec2Instan
 	if hw != nil {
 		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
 	}
-	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetEC2Instance")
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.getEC2Instance")
 	defer span.End()
+	setCommonAttrs(ctx, span, "ByIPAddress", ip, hw)
 
 	if ferr != nil {
+		span.SetAttributes(attribute.String("tootles.error", ferr.Error()))
 		span.SetStatus(codes.Error, ferr.Error())
 		return data.Ec2Instance{}, toInstanceNotFoundErr(ferr)
 	}
@@ -80,10 +107,12 @@ func (b *Backend) GetEC2InstanceByInstanceID(ctx context.Context, instanceID str
 	if hw != nil {
 		ctx, _ = tinkotel.ExtractTraceparentFromAnnotations(ctx, hw.GetAnnotations())
 	}
-	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.GetEC2InstanceByInstanceID")
+	_, span := otel.Tracer(tracerName).Start(ctx, "tootles.backend.getEC2InstanceByInstanceID")
 	defer span.End()
+	setCommonAttrs(ctx, span, "ByInstanceID", instanceID, hw)
 
 	if ferr != nil {
+		span.SetAttributes(attribute.String("tootles.error", ferr.Error()))
 		span.SetStatus(codes.Error, ferr.Error())
 		return data.Ec2Instance{}, toInstanceNotFoundErr(ferr)
 	}

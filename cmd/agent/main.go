@@ -108,6 +108,7 @@ func main() {
 			Servicename: name,
 			Endpoint:    c.Options.Transport.GRPC.ServerAddrPort,
 			Insecure:    c.Options.Transport.GRPC.TLSInsecure || !c.Options.Transport.GRPC.TLSEnabled,
+			InstanceID:  c.AgentID,
 			Logger:      log,
 		}
 		newCtx, otelShutdown, err := otel.Init(ctx, otelCfg)

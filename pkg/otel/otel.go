@@ -25,6 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -105,7 +106,12 @@ type Config struct {
 	Servicename string `json:"service_name"`
 	Endpoint    string `json:"endpoint"`
 	Insecure    bool   `json:"insecure"`
-	Logger      logr.Logger
+	// InstanceID, when non-empty, is exported as the OTel-standard
+	// `service.instance.id` resource attribute, attached to every span
+	// and log record emitted by this process. Used by tink-agent to
+	// tag all of its telemetry with its agent ID.
+	InstanceID string `json:"instance_id"`
+	Logger     logr.Logger
 }
 
 // Init sets up the OpenTelemetry plumbing so it's ready to use.
@@ -122,8 +128,11 @@ func Init(ctx context.Context, c Config) (context.Context, context.CancelFunc, e
 
 func (c Config) initTracing(ctx context.Context) (context.Context, context.CancelFunc, error) {
 	// set the service name that will show up in tracing UIs
-	resAttrs := resource.WithAttributes(semconv.ServiceNameKey.String(c.Servicename))
-	res, err := resource.New(ctx, resAttrs)
+	attrs := []attribute.KeyValue{semconv.ServiceNameKey.String(c.Servicename)}
+	if c.InstanceID != "" {
+		attrs = append(attrs, attribute.String("service.instance.id", c.InstanceID))
+	}
+	res, err := resource.New(ctx, resource.WithAttributes(attrs...))
 	if err != nil {
 		return ctx, nil, fmt.Errorf("failed to create OpenTelemetry service name resource: %w", err)
 	}

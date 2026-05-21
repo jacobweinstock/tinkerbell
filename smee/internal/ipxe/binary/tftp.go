@@ -91,7 +91,7 @@ func (h TFTP) HandleRead(filename string, rf io.ReaderFrom) error {
 	log = log.WithValues("macFromURI", optionalMac.String())
 
 	tracer := otel.Tracer("TFTP")
-	_, span := tracer.Start(ctx, "TFTP get",
+	_, span := tracer.Start(ctx, "smee.ipxe.tftp.get",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(attribute.String("filename", filename)),
 		trace.WithAttributes(attribute.String("requested-filename", longfile)),

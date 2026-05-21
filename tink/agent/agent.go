@@ -113,6 +113,7 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 		// any errors are visible together under the workflow trace.
 		actionCtx, actionSpan := otel.Tracer(agentTracerName).Start(ctx, "action.execute",
 			trace.WithAttributes(
+				otelattribute.String("agent.id", action.AgentID),
 				otelattribute.String("action.id", action.ID),
 				otelattribute.String("action.name", action.Name),
 				otelattribute.String("action.image", action.Image),

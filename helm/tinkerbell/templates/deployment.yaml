@@ -240,6 +240,8 @@ spec:
               value: {{ .Values.deployment.envs.globals.otelEndpoint | quote }}
             - name: TINKERBELL_OTEL_INSECURE
               value: {{ .Values.deployment.envs.globals.otelInsecure | quote }}
+            - name: TINKERBELL_OTEL_LOGS_ENABLED
+              value: {{ .Values.deployment.envs.globals.otelLogsEnabled | quote }}
             - name: TINKERBELL_TRUSTED_PROXIES
               value: {{ ( join "," $trustedProxies ) | quote }}
             - name: TINKERBELL_PUBLIC_IPV4

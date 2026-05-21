@@ -40,6 +40,7 @@ deployment:
       logLevel: 0
       otelEndpoint: ""
       otelInsecure: false
+      otelLogsEnabled: false
       publicIpv4: ""
       tlsCertFile: ""
       tlsKeyFile: ""

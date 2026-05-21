@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/insomniacslk/dhcp/dhcpv4"
@@ -123,14 +124,23 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, dp dhcp.Pac
 	}
 	log := h.Log.WithValues("mac", dp.Pkt.ClientHWAddr.String(), "xid", dp.Pkt.TransactionID.String(), "interface", ifName)
 	tracer := otel.Tracer(tracerName)
+	msgTypeName := strings.ToLower(dp.Pkt.MessageType().String())
 	var span trace.Span
 	ctx, span = tracer.Start(
 		ctx,
-		fmt.Sprintf("DHCP Packet Received: %v", dp.Pkt.MessageType().String()),
+		fmt.Sprintf("smee.dhcp.proxy.%s", msgTypeName),
 		trace.WithAttributes(h.encodeToAttributes(dp.Pkt, "request")...),
-		trace.WithAttributes(attribute.String("DHCP.peer", dp.Peer.String())),
-		trace.WithAttributes(attribute.String("DHCP.server.ifname", ifName)),
+		trace.WithAttributes(
+			attribute.String("dhcp.peer", dp.Peer.String()),
+			attribute.String("dhcp.server.ifname", ifName),
+			attribute.String("dhcp.message_type", msgTypeName),
+			attribute.String("dhcp.client_mac", dp.Pkt.ClientHWAddr.String()),
+			attribute.String("dhcp.xid", dp.Pkt.TransactionID.String()),
+		),
 	)
+	if dp.Pkt.GatewayIPAddr != nil && !dp.Pkt.GatewayIPAddr.IsUnspecified() {
+		span.SetAttributes(attribute.String("dhcp.giaddr", dp.Pkt.GatewayIPAddr.String()))
+	}
 
 	defer span.End()
 
@@ -256,13 +266,27 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, dp dhcp.Pac
 		"messageType", reply.MessageType().String(),
 		"serverHostname", reply.ServerHostName,
 	)
+	respType := strings.ToLower(reply.MessageType().String())
+	_, respSpan := tracer.Start(
+		ctx,
+		fmt.Sprintf("smee.dhcp.proxy.%s", respType),
+		trace.WithAttributes(
+			attribute.String("dhcp.response_type", respType),
+			attribute.String("dhcp.offered_ip", reply.YourIPAddr.String()),
+			attribute.Bool("dhcp.netboot", reply.BootFileName != ""),
+		),
+	)
 	// send the DHCP packet
 	if _, err := conn.WriteTo(reply.ToBytes(), cm, dst); err != nil {
 		log.Error(err, "failed to send ProxyDHCP response")
+		respSpan.SetStatus(codes.Error, err.Error())
+		respSpan.End()
 		span.SetStatus(codes.Error, err.Error())
 
 		return
 	}
+	respSpan.SetStatus(codes.Ok, "sent DHCP response")
+	respSpan.End()
 	log.Info("Sent ProxyDHCP response")
 	span.SetAttributes(h.encodeToAttributes(reply, "reply")...)
 	span.SetStatus(codes.Ok, "sent DHCP response")

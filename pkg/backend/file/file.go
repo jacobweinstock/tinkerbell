@@ -87,7 +87,7 @@ func NewWatcher(l logr.Logger, f string) (*Watcher, error) {
 // ReadHardware looks up a Hardware object by name from the in-memory data.
 func (w *Watcher) ReadHardware(ctx context.Context, name, namespace string) (*tinkerbell.Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	_, span := tracer.Start(ctx, "backend.file.ReadHardware")
+	_, span := tracer.Start(ctx, "backend.file.readHardware")
 	defer span.End()
 
 	w.dataMu.RLock()
@@ -122,7 +122,7 @@ func (w *Watcher) ReadHardware(ctx context.Context, name, namespace string) (*ti
 // Exactly one result is expected; zero results returns a not-found error and multiple results returns a multiple-found error.
 func (w *Watcher) FilterHardware(ctx context.Context, opts data.HardwareFilter) (*tinkerbell.Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	_, span := tracer.Start(ctx, "backend.file.FilterHardware")
+	_, span := tracer.Start(ctx, "backend.file.filterHardware")
 	defer span.End()
 
 	w.dataMu.RLock()

@@ -23,7 +23,7 @@ func (b *Backend) CreateHardware(ctx context.Context, hw *v1alpha1.Hardware) err
 // ReadHardware looks up a Hardware object by name and namespace using a direct Get.
 func (b *Backend) ReadHardware(ctx context.Context, name, namespace string) (*v1alpha1.Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "backend.kube.ReadHardware")
+	ctx, span := tracer.Start(ctx, "backend.kube.readHardware")
 	defer span.End()
 
 	hw := &v1alpha1.Hardware{}
@@ -38,7 +38,7 @@ func (b *Backend) ReadHardware(ctx context.Context, name, namespace string) (*v1
 // Exactly one result is expected; zero results returns a not-found error and multiple results returns a multiple-found error.
 func (b *Backend) FilterHardware(ctx context.Context, opts data.HardwareFilter) (*v1alpha1.Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "backend.kube.FilterHardware")
+	ctx, span := tracer.Start(ctx, "backend.kube.filterHardware")
 	defer span.End()
 
 	hwList := &v1alpha1.HardwareList{}

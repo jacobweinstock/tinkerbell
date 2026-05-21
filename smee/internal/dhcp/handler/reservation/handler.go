@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/insomniacslk/dhcp/dhcpv4"
@@ -76,14 +77,23 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 		}
 	}
 
+	msgTypeName := strings.ToLower(p.Pkt.MessageType().String())
 	var span trace.Span
 	ctx, span = tracer.Start(
 		ctx,
-		fmt.Sprintf("DHCP Packet Received: %v", p.Pkt.MessageType().String()),
+		fmt.Sprintf("smee.dhcp.reservation.%s", msgTypeName),
 		trace.WithAttributes(h.encodeToAttributes(p.Pkt, "request")...),
-		trace.WithAttributes(attribute.String("DHCP.peer", p.Peer.String())),
-		trace.WithAttributes(attribute.String("DHCP.server.ifname", ifName)),
+		trace.WithAttributes(
+			attribute.String("dhcp.peer", p.Peer.String()),
+			attribute.String("dhcp.server.ifname", ifName),
+			attribute.String("dhcp.message_type", msgTypeName),
+			attribute.String("dhcp.client_mac", p.Pkt.ClientHWAddr.String()),
+			attribute.String("dhcp.xid", p.Pkt.TransactionID.String()),
+		),
 	)
+	if p.Pkt.GatewayIPAddr != nil && !p.Pkt.GatewayIPAddr.IsUnspecified() {
+		span.SetAttributes(attribute.String("dhcp.giaddr", p.Pkt.GatewayIPAddr.String()))
+	}
 
 	defer span.End()
 
@@ -161,12 +171,26 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, p dhcp.Pack
 		cm.IfIndex = p.Md.IfIndex
 	}
 
+	respType := strings.ToLower(reply.MessageType().String())
+	_, respSpan := tracer.Start(
+		ctx,
+		fmt.Sprintf("smee.dhcp.reservation.%s", respType),
+		trace.WithAttributes(
+			attribute.String("dhcp.response_type", respType),
+			attribute.String("dhcp.offered_ip", reply.YourIPAddr.String()),
+			attribute.Bool("dhcp.netboot", reply.BootFileName != ""),
+		),
+	)
 	if _, err := conn.WriteTo(reply.ToBytes(), cm, dst); err != nil {
 		log.Error(err, "failed to send DHCP")
+		respSpan.SetStatus(codes.Error, err.Error())
+		respSpan.End()
 		span.SetStatus(codes.Error, err.Error())
 
 		return
 	}
+	respSpan.SetStatus(codes.Ok, "sent DHCP response")
+	respSpan.End()
 
 	log.Info("sent DHCP response")
 	span.SetAttributes(h.encodeToAttributes(reply, "reply")...)
@@ -197,7 +221,7 @@ func (h *Handler) readBackend(ctx context.Context, mac net.HardwareAddr) (*dhcp.
 	h.setDefaults()
 
 	tracer := otel.Tracer(tracerName)
-	ctx, span := tracer.Start(ctx, "Hardware data get")
+	ctx, span := tracer.Start(ctx, "smee.dhcp.reservation.readBackend")
 	defer span.End()
 
 	spec, err := h.Backend.FilterHardware(ctx, data.HardwareFilter{ByMACAddress: mac.String()})

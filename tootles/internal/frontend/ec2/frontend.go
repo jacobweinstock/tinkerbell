@@ -61,13 +61,15 @@ func (f Frontend) Configure(router gin.IRouter) {
 	// instance and returning data from it.
 	for _, r := range dataRoutes {
 		v20090404.GET(r.Endpoint, func(ctx *gin.Context) {
-			instance, getInstanceErr := f.getInstanceViaIP(ctx, ctx.Request)
+			reqCtx := WithEndpoint(ctx.Request.Context(), r.Endpoint)
+			instance, getInstanceErr := f.getInstanceViaIP(reqCtx, ctx.Request)
 			f.writeInstanceDataOrErrToHTTP(ctx, getInstanceErr, r.Filter(instance))
 		})
 
 		if f.instanceEndpoint {
 			v20090404viaInstanceID.GET(r.Endpoint, func(ctx *gin.Context) {
-				instance, getInstanceErr := f.getInstanceViaInstanceID(ctx)
+				reqCtx := WithEndpoint(ctx.Request.Context(), r.Endpoint)
+				instance, getInstanceErr := f.getInstanceViaInstanceID(reqCtx, ctx)
 				f.writeInstanceDataOrErrToHTTP(ctx, getInstanceErr, r.Filter(instance))
 			})
 		}
@@ -131,8 +133,8 @@ func (f Frontend) getInstanceViaIP(ctx context.Context, r *http.Request) (data.E
 
 // getInstanceViaInstanceID is a gin-specific method for retrieving Instance data based on the instance ID included in the request path.
 // It is currently gin-specific because it depends on *gin.Context and ctx.Param("instanceID"), unlike getInstanceViaIP.
-func (f Frontend) getInstanceViaInstanceID(ctx *gin.Context) (data.Ec2Instance, error) {
-	instanceID := ctx.Param("instanceID")
+func (f Frontend) getInstanceViaInstanceID(ctx context.Context, gctx *gin.Context) (data.Ec2Instance, error) {
+	instanceID := gctx.Param("instanceID")
 	if strings.TrimSpace(instanceID) == "" {
 		return data.Ec2Instance{}, httperror.New(http.StatusNotFound, "instance ID parameter is empty or invalid")
 	}

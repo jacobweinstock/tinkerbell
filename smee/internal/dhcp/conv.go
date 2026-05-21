@@ -19,7 +19,7 @@ const tracerName = "github.com/tinkerbell/tinkerbell"
 
 func ConvertByMac(ctx context.Context, mac net.HardwareAddr, hw *v1alpha1.Hardware) (Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	_, span := tracer.Start(ctx, "smee.internal.data.ConvertByMac")
+	_, span := tracer.Start(ctx, "smee.internal.data.convertByMAC")
 	defer span.End()
 	if hw == nil {
 		return Hardware{}, errors.New("hardware is nil")
@@ -60,7 +60,7 @@ func ConvertByMac(ctx context.Context, mac net.HardwareAddr, hw *v1alpha1.Hardwa
 
 func ConvertByIP(ctx context.Context, ip net.IP, hw *v1alpha1.Hardware) (Hardware, error) {
 	tracer := otel.Tracer(tracerName)
-	_, span := tracer.Start(ctx, "smee.internal.data.ConvertByIP")
+	_, span := tracer.Start(ctx, "smee.internal.data.convertByIP")
 	defer span.End()
 	if hw == nil {
 		return Hardware{}, errors.New("hardware is nil")

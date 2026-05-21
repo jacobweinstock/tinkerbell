@@ -57,7 +57,7 @@ func (h Handler) Handle(w http.ResponseWriter, req *http.Request) {
 	}
 
 	tracer := otel.Tracer("HTTP")
-	_, span := tracer.Start(ctx, fmt.Sprintf("HTTP %v", req.Method),
+	_, span := tracer.Start(ctx, fmt.Sprintf("smee.ipxe.http.%s", strings.ToLower(req.Method)),
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(attribute.String("filename", filename)),
 		trace.WithAttributes(attribute.String("requested-filename", longfile)),

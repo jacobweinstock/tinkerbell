@@ -220,7 +220,7 @@ func (r *TaskReconciler) doReconcile(ctx context.Context, task *bmc.Task, taskPa
 func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task bmc.Action, bmcClient *bmclib.Client) error {
 	tracer := otel.Tracer(rufioTracerName)
 	if task.PowerAction != nil {
-		ctx, span := tracer.Start(ctx, "bmc.set_power_state",
+		ctx, span := tracer.Start(ctx, "bmc.setPowerState",
 			trace.WithAttributes(attribute.String("bmc.power_action", string(*task.PowerAction))))
 		defer span.End()
 		ok, err := bmcClient.SetPowerState(ctx, string(*task.PowerAction))
@@ -236,7 +236,7 @@ func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task b
 	}
 
 	if task.OneTimeBootDeviceAction != nil { //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility. We will remove in a future release.
-		ctx, span := tracer.Start(ctx, "bmc.set_boot_device",
+		ctx, span := tracer.Start(ctx, "bmc.setBootDevice",
 			trace.WithAttributes(
 				attribute.String("bmc.boot_device", string(task.OneTimeBootDeviceAction.Devices[0])), //nolint:staticcheck // oneTimeBootDeviceAction is deprecated but still supported for backward compatibility.
 				attribute.Bool("bmc.persistent", false),
@@ -257,7 +257,7 @@ func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task b
 	}
 
 	if task.BootDevice != nil {
-		ctx, span := tracer.Start(ctx, "bmc.set_boot_device",
+		ctx, span := tracer.Start(ctx, "bmc.setBootDevice",
 			trace.WithAttributes(
 				attribute.String("bmc.boot_device", task.BootDevice.Device.String()),
 				attribute.Bool("bmc.persistent", task.BootDevice.Persistent),
@@ -278,7 +278,7 @@ func (r *TaskReconciler) runTask(ctx context.Context, logger logr.Logger, task b
 	}
 
 	if task.VirtualMediaAction != nil {
-		ctx, span := tracer.Start(ctx, "bmc.set_virtual_media",
+		ctx, span := tracer.Start(ctx, "bmc.setVirtualMedia",
 			trace.WithAttributes(attribute.String("bmc.virtual_media.kind", string(task.VirtualMediaAction.Kind))))
 		defer span.End()
 		ok, err := bmcClient.SetVirtualMedia(ctx, string(task.VirtualMediaAction.Kind), task.VirtualMediaAction.MediaURL)
