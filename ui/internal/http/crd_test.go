@@ -133,7 +133,6 @@ func TestKindDescriptions(t *testing.T) {
 		// v1alpha2
 		{key: "v1alpha2/Hardware", wantNonEmpty: true},
 		{key: "v1alpha2/Task", wantNonEmpty: true},
-		{key: "v1alpha2/BMC", wantNonEmpty: true},
 		{key: "v1alpha2/Workflow", wantNonEmpty: true},
 		{key: "v1alpha2/Policy", wantNonEmpty: true},
 		{key: "v1alpha2/Job", wantNonEmpty: true},

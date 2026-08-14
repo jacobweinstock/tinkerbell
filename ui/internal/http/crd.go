@@ -49,7 +49,6 @@ var kindDescriptions = map[string]string{
 	// v1alpha2
 	"v1alpha2/Hardware": "Machines in your infrastructure, with details about network interfaces, disks, BMC connections, and auto-discovery capabilities.",
 	"v1alpha2/Task":     "A reusable definition of Actions that can be referenced by Workflows for execution on Hardware.",
-	"v1alpha2/BMC":      "BMCs (Baseboard Management Controller) for out-of-band hardware management operations.",
 	"v1alpha2/Workflow": "An ordered sequence of Tasks with boot options, hardware references, and templating for provisioning Hardware.",
 	"v1alpha2/Policy":   "Controls Workflow auto-creation rules based on agent attributes and reference access policies for Hardware and Tasks.",
 	"v1alpha2/Job":      "A BMC operation request containing one or more operations to execute on a target BMC.",
