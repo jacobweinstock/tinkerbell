@@ -24,6 +24,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/bmc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -736,6 +737,13 @@ func (in *HardwareStatus) DeepCopyInto(out *HardwareStatus) {
 		in, out := &in.Attributes, &out.Attributes
 		*out = new(HardwareAttributes)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 

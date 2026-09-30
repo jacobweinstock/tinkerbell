@@ -428,6 +428,12 @@ type HardwareStatus struct {
 	// disjoint subtree and neither can clobber the other.
 	//+optional
 	Attributes *HardwareAttributes `json:"attributes,omitempty"`
+
+	// Conditions are the latest observations of the Hardware's state.
+	// +optional
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // HardwareAttributes holds hardware attribute subtrees, one per collection path.

@@ -305,3 +305,41 @@ func TestRenderStoreStart(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRenderStoreStatusAndNotify(t *testing.T) {
+	ctx := context.Background()
+	hws, res := &fakeHardware{}, &fakeResolver{refs: netRefs("example.org")}
+	s := newTestStore(hws, res, &fakeInformers{})
+	hw := templated("1")
+	hw.Generation = 7
+	key := client.ObjectKeyFromObject(hw)
+	hws.set(hw)
+	s.render(ctx, key)
+
+	var notified []types.NamespacedName
+	s.onRender(func(k types.NamespacedName) { notified = append(notified, k) })
+	if len(notified) != 1 || notified[0] != key {
+		t.Fatalf("subscribing must replay rendered Hardware, got %v", notified)
+	}
+
+	st, ok := s.status(key)
+	if !ok || st.Generation != 7 || !st.Templated || len(st.Failures) != 0 {
+		t.Fatalf("status = %+v, %v", st, ok)
+	}
+
+	res.set(nil, ErrReferenceDenied)
+	s.render(ctx, key)
+	if len(notified) != 2 {
+		t.Fatalf("a render must notify, got %v", notified)
+	}
+	st, _ = s.status(key)
+	if len(st.Failures) != 2 || st.Failures[0].Consumer != "smee" || !st.Failures[0].ServingPrevious || !errors.Is(st.Failures[0].Err, ErrReferenceDenied) {
+		t.Fatalf("status = %+v", st)
+	}
+
+	hws.hws = nil
+	s.render(ctx, key)
+	if _, ok := s.status(key); ok || len(notified) != 3 {
+		t.Fatalf("a deleted Hardware must notify and have no status: ok = %v, notified %v", ok, notified)
+	}
+}

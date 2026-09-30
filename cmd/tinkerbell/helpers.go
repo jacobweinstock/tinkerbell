@@ -33,6 +33,10 @@ func numEnabled(globals *flag.GlobalConfig) int {
 	if globals.EnableRufio {
 		n++
 	}
+	// Only counted when it would run, so enabling it by default changes nothing.
+	if hardwareControllerRuns(globals) {
+		n++
+	}
 	if globals.EnableSecondStar {
 		n++
 	}
@@ -40,6 +44,12 @@ func numEnabled(globals *flag.GlobalConfig) int {
 		n++
 	}
 	return n
+}
+
+// hardwareControllerRuns reports whether the Hardware controller would run: in
+// v1alpha1 it only reports on templating, so it needs templating enabled.
+func hardwareControllerRuns(globals *flag.GlobalConfig) bool {
+	return globals.EnableHardware && globals.BackendKubeOptions.HardwareTemplating
 }
 
 func enabledIndexes(smeeEnabled, tootlesEnabled, tinkServerEnabled, secondStarEnabled bool) map[kube.IndexType]kube.Index {

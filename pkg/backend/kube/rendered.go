@@ -69,6 +69,24 @@ func (h hardwareNotRenderedError) Error() string {
 	return fmt.Sprintf("hardware %s/%s has templates that have not rendered successfully", h.namespace, h.name)
 }
 
+// RenderStatus returns the outcome of the latest render of the Hardware key, and
+// false if it has not been rendered or templating is disabled.
+func (b *Backend) RenderStatus(key types.NamespacedName) (RenderStatus, bool) {
+	if b.store == nil {
+		return RenderStatus{}, false
+	}
+	return b.store.status(key)
+}
+
+// OnRender makes fn be called with the key of every Hardware rendered, starting
+// with those already rendered. fn must not block. It does nothing when
+// templating is disabled.
+func (b *Backend) OnRender(fn func(types.NamespacedName)) {
+	if b.store != nil {
+		b.store.onRender(fn)
+	}
+}
+
 func (b *Backend) newRenderStore() *renderStore {
 	get := func(ctx context.Context, key types.NamespacedName) (*tinkerbell.Hardware, error) {
 		hw := &tinkerbell.Hardware{}

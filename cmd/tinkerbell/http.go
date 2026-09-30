@@ -140,7 +140,8 @@ func startHTTPServer(ctx context.Context, globals *flag.GlobalConfig, s *flag.Sm
 			"Tink server metrics handler",
 		)
 	}
-	if globals.EnableTinkController || globals.EnableRufio {
+	// Hardware templating runs the render queue and the Hardware controller, whose metrics also land here.
+	if globals.EnableTinkController || globals.EnableRufio || globals.BackendKubeOptions.HardwareTemplating {
 		// controller-runtime's registry registers its own GoCollector and
 		// ProcessCollector. Those duplicate the collectors already present
 		// in prometheus.DefaultGatherer, so strip them for the combined
@@ -151,7 +152,7 @@ func startHTTPServer(ctx context.Context, globals *flag.GlobalConfig, s *flag.Sm
 		})
 		routeList.Register(routeControllerMetrics,
 			middleware.WithLogLevel(middleware.LogLevelNever, promhttp.HandlerFor(crmetrics.Registry, promhttp.HandlerOpts{})),
-			"Controller-runtime metrics handler (tink-controller + rufio)",
+			"Controller-runtime metrics handler (tink-controller, rufio, hardware templating)",
 		)
 	}
 	gatherers = append(gatherers, middleware.Registry)

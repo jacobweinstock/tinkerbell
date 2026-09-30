@@ -16,6 +16,9 @@ import (
 // denyAllReferences is the deny list used when none is configured.
 const denyAllReferences = `{"reference": {"name": [{"wildcard": "*"}]}}`
 
+// ErrReferenceDenied reports a reference the policy does not allow.
+var ErrReferenceDenied = errors.New("reference denied")
+
 // evaluateData is the data structure used for evaluating rules.
 // In Quamina, this is called the "event".
 type evaluationData struct {
@@ -65,7 +68,7 @@ func (b *Backend) ResolveReferences(ctx context.Context, hw *tinkerbell.Hardware
 			continue
 		}
 		if denied && !allowed {
-			refErr = errors.Join(refErr, errors.New("reference denied"))
+			refErr = errors.Join(refErr, ErrReferenceDenied)
 			logger.V(1).Info("reference denied", "referenceName", refName, "denyRules", drules, "allowRules", arules)
 			continue
 		}

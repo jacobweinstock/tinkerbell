@@ -34,6 +34,7 @@ deployment:
       disableHttpToHttpsRedirect: false # set true to stop auto-redirecting plain HTTP requests to HTTPS when TLS is enabled
       enableCRDMigrations: true
       enableRufioController: true
+      enableHardwareController: true # only runs when backendKubeHardwareTemplatingEnabled is true
       enableSecondstar: true
       enableSmee: true
       enableTootles: true
@@ -65,6 +66,10 @@ deployment:
       logLevel: 0
       maxConcurrentReconciles: 1
       powerCheckInterval: "30m0s"
+    hardwareController:
+      enableLeaderElection: true
+      leaderElectionNamespace: ""
+      logLevel: 0
     secondstar:
       bindAddr: ""
       bindAddrV6: ""

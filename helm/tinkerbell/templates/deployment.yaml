@@ -127,6 +127,13 @@ spec:
               value: {{ .Values.deployment.envs.rufio.enableInventoryCollection | quote }}
             - name: TINKERBELL_RUFIO_MAX_CONCURRENT_RECONCILES
               value: {{ .Values.deployment.envs.rufio.maxConcurrentReconciles | quote }}
+          # HARDWARE CONTROLLER
+            - name: TINKERBELL_HARDWARE_CONTROLLER_ENABLE_LEADER_ELECTION
+              value: {{ .Values.deployment.envs.hardwareController.enableLeaderElection | quote }}
+            - name: TINKERBELL_HARDWARE_CONTROLLER_LEADER_ELECTION_NAMESPACE
+              value: {{ .Values.deployment.envs.hardwareController.leaderElectionNamespace | quote }}
+            - name: TINKERBELL_HARDWARE_CONTROLLER_LOG_LEVEL
+              value: {{ .Values.deployment.envs.hardwareController.logLevel | quote }}
           # TINK CONTROLLER
             - name: TINKERBELL_TINK_CONTROLLER_ENABLE_LEADER_ELECTION
               value: {{ .Values.deployment.envs.tinkController.enableLeaderElection | quote }}
@@ -430,6 +437,8 @@ spec:
               value: {{ .Values.deployment.envs.globals.enableTinkController | quote }}
             - name: TINKERBELL_ENABLE_RUFIO_CONTROLLER
               value: {{ .Values.deployment.envs.globals.enableRufioController | quote }}
+            - name: TINKERBELL_ENABLE_HARDWARE_CONTROLLER
+              value: {{ .Values.deployment.envs.globals.enableHardwareController | quote }}
             - name: TINKERBELL_ENABLE_SECONDSTAR
               value: {{ .Values.deployment.envs.globals.enableSecondstar | quote }}
             - name: TINKERBELL_ENABLE_UI

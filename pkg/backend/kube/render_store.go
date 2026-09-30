@@ -37,6 +37,7 @@ type renderStore struct {
 	refs      map[types.NamespacedName][]refKey
 	referrers map[refKey]map[types.NamespacedName]struct{}
 	watched   map[schema.GroupResource]struct{}
+	notify    func(types.NamespacedName)
 }
 
 type informerGetter interface {
@@ -46,6 +47,7 @@ type informerGetter interface {
 // renderEntry is replaced whole, never modified, so readers need no lock on it.
 type renderEntry struct {
 	resourceVersion string               // of the Hardware last rendered
+	generation      int64                // of the Hardware last rendered
 	err             error                // rendering that resourceVersion failed
 	good            *tinkerbell.Hardware // last successful rendering, nil if none
 	identity        bool                 // good is the stored object: nothing needed rendering
@@ -143,8 +145,7 @@ func (s *renderStore) processNext(ctx context.Context) bool {
 	return true
 }
 
-// render renders one Hardware for every consumer and reports whether all
-// succeeded.
+// render renders one Hardware and reports whether rendering succeeded.
 func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool {
 	hw, err := s.get(ctx, key)
 	if apierrors.IsNotFound(err) {
@@ -158,14 +159,14 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 	if !needsRendering(hw) {
 		s.track(ctx, key, nil)
 		s.mu.Lock()
-		s.entries[key] = &renderEntry{resourceVersion: hw.ResourceVersion, good: hw, identity: true}
+		s.entries[key] = &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation, good: hw, identity: true}
 		s.mu.Unlock()
+		s.notifyRendered(key)
 		return true
 	}
 	s.track(ctx, key, hw.Spec.References)
 
-	e := &renderEntry{resourceVersion: hw.ResourceVersion}
-	// A denied or unreadable reference only fails the render if a template uses it.
+	e := &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation}
 	refs, refErr := s.resolve(ctx, hw)
 	e.good, err = renderHardware(hw, refs)
 	e.identity = e.good == hw
@@ -186,16 +187,72 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 	if err != nil {
 		s.log.Error(e.err, "render hardware", "hardware", key, "servingPrevious", servingPrevious)
 	}
+	s.notifyRendered(key)
 
 	return err == nil
+}
+
+// RenderStatus is the outcome of the latest render of a Hardware.
+type RenderStatus struct {
+	// Generation is the Hardware generation rendered.
+	Generation int64
+	// Templated reports whether the Hardware has templates.
+	Templated bool
+	// Err is the latest rendering error, if any.
+	Err error
+	// ServingPrevious reports whether an earlier successful rendering is served instead.
+	ServingPrevious bool
+}
+
+// status returns the outcome of key's latest render, and false if it has not
+// been rendered.
+func (s *renderStore) status(key types.NamespacedName) (RenderStatus, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e := s.entries[key]
+	if e == nil {
+		return RenderStatus{}, false
+	}
+	return RenderStatus{
+		Generation:      e.generation,
+		Templated:       !e.identity,
+		Err:             e.err,
+		ServingPrevious: e.err != nil && e.good != nil,
+	}, true
+}
+
+// onRender makes fn be called with the key of every Hardware rendered from now
+// on, and at once with every Hardware already rendered. It replaces any
+// previous fn, which must not block.
+func (s *renderStore) onRender(fn func(types.NamespacedName)) {
+	s.mu.Lock()
+	s.notify = fn
+	keys := make([]types.NamespacedName, 0, len(s.entries))
+	for key := range s.entries {
+		keys = append(keys, key)
+	}
+	s.mu.Unlock()
+	for _, k := range keys {
+		fn(k)
+	}
+}
+
+func (s *renderStore) notifyRendered(key types.NamespacedName) {
+	s.mu.RLock()
+	fn := s.notify
+	s.mu.RUnlock()
+	if fn != nil {
+		fn(key)
+	}
 }
 
 // forget drops everything held for a deleted Hardware.
 func (s *renderStore) forget(key types.NamespacedName) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	delete(s.entries, key)
 	s.setRefs(key, nil)
+	s.mu.Unlock()
+	s.notifyRendered(key)
 }
 
 // track records what key references, so that a change to a referenced object

@@ -17,6 +17,8 @@ import (
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tinkerbell/tinkerbell/cmd/tinkerbell/flag"
 	"github.com/tinkerbell/tinkerbell/crd"
+	"github.com/tinkerbell/tinkerbell/hardware"
+	"github.com/tinkerbell/tinkerbell/pkg/backend/kube"
 	"github.com/tinkerbell/tinkerbell/pkg/build"
 	"github.com/tinkerbell/tinkerbell/pkg/constant"
 	"github.com/tinkerbell/tinkerbell/pkg/otel"
@@ -57,6 +59,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		EnableTinkServer:     true,
 		EnableTinkController: true,
 		EnableRufio:          true,
+		EnableHardware:       true,
 		EnableSecondStar:     true,
 		EnableUI:             true,
 		EnableCRDMigrations:  true,
@@ -103,6 +106,9 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		Config: rufio.NewConfig(rufioOpts...),
 	}
 
+	hwc := &flag.HardwareControllerConfig{Config: hardware.NewConfig()}
+	hwc.Config.EnableLeaderElection = false
+
 	ssc := &flag.SecondStarConfig{
 		Port:   defaultSecondStarPort,
 		PortV6: defaultSecondStarPort,
@@ -129,7 +135,8 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	tfs := ff.NewFlagSet("tink server - Workflow service").SetParent(hfs)
 	cfs := ff.NewFlagSet("tink controller - Workflow controller").SetParent(tfs)
 	rfs := ff.NewFlagSet("rufio - BMC controller").SetParent(cfs)
-	ssfs := ff.NewFlagSet("secondstar - SSH over serial service").SetParent(rfs)
+	hwfs := ff.NewFlagSet("hardware controller - Hardware controller").SetParent(rfs)
+	ssfs := ff.NewFlagSet("secondstar - SSH over serial service").SetParent(hwfs)
 	uifs := ff.NewFlagSet("ui - UI service").SetParent(ssfs)
 	gfs := ff.NewFlagSet("globals").SetParent(uifs)
 	flag.RegisterSmeeFlags(&flag.Set{FlagSet: sfs}, s)
@@ -137,6 +144,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	flag.RegisterTinkServerFlags(&flag.Set{FlagSet: tfs}, ts)
 	flag.RegisterTinkControllerFlags(&flag.Set{FlagSet: cfs}, tc)
 	flag.RegisterRufioFlags(&flag.Set{FlagSet: rfs}, rc)
+	flag.RegisterHardwareControllerFlags(&flag.Set{FlagSet: hwfs}, hwc)
 	flag.RegisterSecondStarFlags(&flag.Set{FlagSet: ssfs}, ssc)
 	flag.RegisterUIFlags(&flag.Set{FlagSet: uifs}, uic)
 	flag.RegisterGlobal(&flag.Set{FlagSet: gfs}, globals)
@@ -245,6 +253,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		"tinkServerEnabled", globals.EnableTinkServer,
 		"tinkControllerEnabled", globals.EnableTinkController,
 		"rufioEnabled", globals.EnableRufio,
+		"hardwareControllerEnabled", globals.EnableHardware,
 		"secondStarEnabled", globals.EnableSecondStar,
 		"uiEnabled", globals.EnableUI,
 		"publicIP", globals.PublicIP,
@@ -300,6 +309,9 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 
 	// Rufio Controller
 	rc.Config.LeaderElectionNamespace = leaderElectionNamespace(inCluster(), rc.Config.EnableLeaderElection, rc.Config.LeaderElectionNamespace)
+
+	// Hardware Controller
+	hwc.Config.LeaderElectionNamespace = leaderElectionNamespace(inCluster(), hwc.Config.EnableLeaderElection, hwc.Config.LeaderElectionNamespace)
 
 	// Second star
 	if err := ssc.Convert(globals.BindAddr, globals.BindAddrV6); err != nil {
@@ -406,6 +418,8 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		tc.Config.Client = b.ClientConfig
 		tc.Config.HardwareReader = b
 		rc.Config.Client = b.ClientConfig
+		hwc.Config.Client = b.ClientConfig
+		hwc.Config.Renders = b
 		ssc.Config.Backend = b
 		if uic.Config.EnableAutoLogin {
 			uic.Config.AutoLoginRestConfig = b.ClientConfig
@@ -513,6 +527,19 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		ll := ternary((ssc.LogLevel != 0), ssc.LogLevel, globals.LogLevel)
 		if err := ssc.Config.Start(ctx, getLogger(ll).WithName("secondstar")); err != nil {
 			return fmt.Errorf("failed to start secondstar service: %w", err)
+		}
+		return nil
+	})
+
+	// Hardware Controller
+	g.Go(func() error {
+		if !hardwareControllerRuns(globals) || hwc.Config.Renders == nil {
+			cliLog.Info("hardware controller is disabled; it runs only with the kube backend and Hardware templating enabled")
+			return nil
+		}
+		ll := ternary((hwc.LogLevel != 0), hwc.LogLevel, globals.LogLevel)
+		if err := hwc.Config.Start(ctx, getLogger(ll).WithName("hardware-controller")); err != nil {
+			return fmt.Errorf("failed to start hardware controller: %w", err)
 		}
 		return nil
 	})
