@@ -1,5 +1,7 @@
 package tinkerbell
 
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 // HardwareApplyConfiguration is a minimal hand-written implementation of
 // runtime.ApplyConfiguration for Hardware, sufficient for the Server-Side
 // Apply patches to status.attributes.inBand (tink-server) and
@@ -35,6 +37,8 @@ type HardwareApplyMetadata struct {
 // +kubebuilder:object:generate=false
 type HardwareStatusApplyConfiguration struct {
 	Attributes *HardwareAttributesApplyConfiguration `json:"attributes,omitempty"`
+	// Conditions lists only the condition types the applying field manager owns.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // HardwareAttributesApplyConfiguration carries only the leaf a given writer

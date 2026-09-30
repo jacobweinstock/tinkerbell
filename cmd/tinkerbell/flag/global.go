@@ -31,6 +31,7 @@ type GlobalConfig struct {
 	EnableTinkServer     bool
 	EnableTinkController bool
 	EnableRufio          bool
+	EnableHardware       bool
 	EnableSecondStar     bool
 	EnableUI             bool
 	EnableCRDMigrations  bool
@@ -86,6 +87,7 @@ func RegisterGlobal(fs *Set, gc *GlobalConfig) {
 	fs.Register(EnableTinkServer, ffval.NewValueDefault(&gc.EnableTinkServer, gc.EnableTinkServer))
 	fs.Register(EnableTinkController, ffval.NewValueDefault(&gc.EnableTinkController, gc.EnableTinkController))
 	fs.Register(EnableRufioController, ffval.NewValueDefault(&gc.EnableRufio, gc.EnableRufio))
+	fs.Register(EnableHardwareController, ffval.NewValueDefault(&gc.EnableHardware, gc.EnableHardware))
 	fs.Register(EnableSecondStar, ffval.NewValueDefault(&gc.EnableSecondStar, gc.EnableSecondStar))
 	fs.Register(EnableUI, ffval.NewValueDefault(&gc.EnableUI, gc.EnableUI))
 	fs.Register(EnableCRDMigrations, ffval.NewValueDefault(&gc.EnableCRDMigrations, gc.EnableCRDMigrations))
@@ -202,6 +204,11 @@ var EnableTinkController = Config{
 var EnableRufioController = Config{
 	Name:  "enable-rufio-controller",
 	Usage: "enable Rufio Controller service",
+}
+
+var EnableHardwareController = Config{
+	Name:  "enable-hardware-controller",
+	Usage: "enable Hardware Controller service; it only runs when Hardware templating is enabled",
 }
 
 var EnableSecondStar = Config{

@@ -38,6 +38,7 @@ type renderStore struct {
 	refs      map[types.NamespacedName][]refKey
 	referrers map[refKey]map[types.NamespacedName]struct{}
 	watched   map[schema.GroupResource]struct{}
+	notify    func(types.NamespacedName)
 }
 
 type entryKey struct {
@@ -52,6 +53,7 @@ type informerGetter interface {
 // renderEntry is replaced whole, never modified, so readers need no lock on it.
 type renderEntry struct {
 	resourceVersion string               // of the Hardware last rendered
+	generation      int64                // of the Hardware last rendered
 	err             error                // rendering that resourceVersion failed
 	good            *tinkerbell.Hardware // last successful rendering, nil if none
 	identity        bool                 // good is the stored object: nothing needed rendering
@@ -167,16 +169,17 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 		s.track(ctx, key, nil)
 		s.mu.Lock()
 		for _, consumer := range s.consumers {
-			s.entries[entryKey{key, consumer}] = &renderEntry{resourceVersion: hw.ResourceVersion, good: hw, identity: true}
+			s.entries[entryKey{key, consumer}] = &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation, good: hw, identity: true}
 		}
 		s.mu.Unlock()
+		s.notifyRendered(key)
 		return true
 	}
 	s.track(ctx, key, hw.Spec.References)
 
 	ok := true
 	for _, consumer := range s.consumers {
-		e := &renderEntry{resourceVersion: hw.ResourceVersion}
+		e := &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation}
 		// Like Workflow rendering, a denied or unreadable reference only fails
 		// the render if a template uses it.
 		refs, refErr := s.resolve(ctx, consumer, hw)
@@ -196,18 +199,85 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 		s.entries[ek] = e
 		s.mu.Unlock()
 	}
+	s.notifyRendered(key)
 
 	return ok
+}
+
+// RenderStatus is the outcome of the latest render of a Hardware.
+type RenderStatus struct {
+	// Generation is the Hardware generation rendered.
+	Generation int64
+	// Templated reports whether the Hardware has templates.
+	Templated bool
+	// Failures lists, in a stable order, the consumers whose render failed.
+	Failures []RenderFailure
+}
+
+// RenderFailure is one consumer's failed render.
+type RenderFailure struct {
+	Consumer string
+	Err      error
+	// ServingPrevious reports whether an earlier successful rendering is served instead.
+	ServingPrevious bool
+}
+
+// status returns the outcome of key's latest render, and false if it has not
+// been rendered.
+func (s *renderStore) status(key types.NamespacedName) (RenderStatus, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var st RenderStatus
+	found := false
+	for _, consumer := range s.consumers {
+		e := s.entries[entryKey{key, consumer}]
+		if e == nil {
+			continue
+		}
+		found = true
+		st.Generation = e.generation
+		st.Templated = st.Templated || !e.identity
+		if e.err != nil {
+			st.Failures = append(st.Failures, RenderFailure{Consumer: consumer, Err: e.err, ServingPrevious: e.good != nil})
+		}
+	}
+	return st, found
+}
+
+// onRender makes fn be called with the key of every Hardware rendered from now
+// on, and at once with every Hardware already rendered. It replaces any
+// previous fn, which must not block.
+func (s *renderStore) onRender(fn func(types.NamespacedName)) {
+	s.mu.Lock()
+	s.notify = fn
+	keys := make(map[types.NamespacedName]struct{})
+	for k := range s.entries {
+		keys[k.hardware] = struct{}{}
+	}
+	s.mu.Unlock()
+	for k := range keys {
+		fn(k)
+	}
+}
+
+func (s *renderStore) notifyRendered(key types.NamespacedName) {
+	s.mu.RLock()
+	fn := s.notify
+	s.mu.RUnlock()
+	if fn != nil {
+		fn(key)
+	}
 }
 
 // forget drops everything held for a deleted Hardware.
 func (s *renderStore) forget(key types.NamespacedName) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	for _, consumer := range s.consumers {
 		delete(s.entries, entryKey{key, consumer})
 	}
 	s.setRefs(key, nil)
+	s.mu.Unlock()
+	s.notifyRendered(key)
 }
 
 // track records what key references, so that a change to a referenced object

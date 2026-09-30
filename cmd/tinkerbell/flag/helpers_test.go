@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/peterbourgon/ff/v4"
+	"github.com/tinkerbell/tinkerbell/hardware"
 	"github.com/tinkerbell/tinkerbell/rufio"
 	"github.com/tinkerbell/tinkerbell/secondstar"
 	"github.com/tinkerbell/tinkerbell/smee"
@@ -26,6 +27,7 @@ func newFullFlagSet(t *testing.T) *ff.FlagSet {
 	RegisterTinkServerFlags(set, &TinkServerConfig{Config: server.NewConfig()})
 	RegisterTinkControllerFlags(set, &TinkControllerConfig{Config: controller.NewConfig()})
 	RegisterRufioFlags(set, &RufioConfig{Config: rufio.NewConfig()})
+	RegisterHardwareControllerFlags(set, &HardwareControllerConfig{Config: hardware.NewConfig()})
 	RegisterSecondStarFlags(set, &SecondStarConfig{Config: &secondstar.Config{}})
 	RegisterUIFlags(set, &UIConfig{Config: ui.NewConfig()})
 	RegisterGlobal(set, &GlobalConfig{})
