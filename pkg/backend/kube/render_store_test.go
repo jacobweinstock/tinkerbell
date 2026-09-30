@@ -323,7 +323,7 @@ func TestRenderStoreStatusAndNotify(t *testing.T) {
 	}
 
 	st, ok := s.status(key)
-	if !ok || st.Generation != 7 || !st.Templated || len(st.Failures) != 0 {
+	if !ok || st.Generation != 7 || !st.Templated || st.Err != nil {
 		t.Fatalf("status = %+v, %v", st, ok)
 	}
 
@@ -333,7 +333,7 @@ func TestRenderStoreStatusAndNotify(t *testing.T) {
 		t.Fatalf("a render must notify, got %v", notified)
 	}
 	st, _ = s.status(key)
-	if len(st.Failures) != 2 || st.Failures[0].Consumer != "smee" || !st.Failures[0].ServingPrevious || !errors.Is(st.Failures[0].Err, ErrReferenceDenied) {
+	if !st.ServingPrevious || !errors.Is(st.Err, ErrReferenceDenied) {
 		t.Fatalf("status = %+v", st)
 	}
 
