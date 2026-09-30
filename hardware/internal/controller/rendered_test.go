@@ -44,17 +44,17 @@ func TestRenderedCondition(t *testing.T) {
 			wantStatus: metav1.ConditionTrue, wantReason: "NoTemplates",
 		},
 		"reference denied": {
-			st: kube.RenderStatus{Generation: 3, Templated: true, Err: errors.Join(kube.ErrReferenceDenied, errors.New("missing key")), ServingPrevious: true},
+			st:         kube.RenderStatus{Generation: 3, Templated: true, Err: errors.Join(kube.ErrReferenceDenied, errors.New("missing key")), ServingPrevious: true},
 			wantStatus: metav1.ConditionFalse, wantReason: "ReferenceDenied",
 			wantMsg: "reference denied\nmissing key; the previous rendering is served",
 		},
 		"reference not found": {
-			st: kube.RenderStatus{Generation: 3, Templated: true, Err: fmt.Errorf("get: %w", apierrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "net"))},
+			st:         kube.RenderStatus{Generation: 3, Templated: true, Err: fmt.Errorf("get: %w", apierrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "net"))},
 			wantStatus: metav1.ConditionFalse, wantReason: "ReferenceNotFound",
 			wantMsg: `get: configmaps "net" not found; nothing is served`,
 		},
 		"template error": {
-			st: kube.RenderStatus{Generation: 3, Templated: true, Err: errors.New("bad template")},
+			st:         kube.RenderStatus{Generation: 3, Templated: true, Err: errors.New("bad template")},
 			wantStatus: metav1.ConditionFalse, wantReason: "TemplateError",
 			wantMsg: "bad template; nothing is served",
 		},
