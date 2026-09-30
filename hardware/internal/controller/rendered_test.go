@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/backend/kube"
@@ -82,7 +83,8 @@ func TestReconcileAppliesOnlyChanges(t *testing.T) {
 		},
 	})
 	req := reconcile.Request{NamespacedName: client.ObjectKeyFromObject(hw)}
-	r := NewRenderedReconciler(c, fakeRenders{st: kube.RenderStatus{Generation: 1, Templated: true}, ok: true})
+	renderedAt := metav1.NewTime(time.Unix(100, 0))
+	r := NewRenderedReconciler(c, fakeRenders{st: kube.RenderStatus{Generation: 1, Templated: true, LastRenderTime: renderedAt}, ok: true})
 
 	for range 2 {
 		if _, err := r.Reconcile(context.Background(), req); err != nil {
@@ -99,9 +101,31 @@ func TestReconcileAppliesOnlyChanges(t *testing.T) {
 	if cond := meta.FindStatusCondition(got.Status.Conditions, ConditionRendered); cond == nil || cond.Reason != "Rendered" {
 		t.Fatalf("conditions = %+v", got.Status.Conditions)
 	}
+	cond := meta.FindStatusCondition(got.Status.Conditions, ConditionRendered).DeepCopy()
+	if got.Status.LastRenderTime == nil || !got.Status.LastRenderTime.Equal(&renderedAt) {
+		t.Fatalf("LastRenderTime = %v, want %v", got.Status.LastRenderTime, renderedAt)
+	}
+
+	renderedAt = metav1.NewTime(time.Unix(101, 0))
+	r.renders = fakeRenders{st: kube.RenderStatus{Generation: 1, Templated: true, LastRenderTime: renderedAt}, ok: true}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if applies != 2 {
+		t.Fatalf("applied %d times after a completed rerender, want 2", applies)
+	}
+	if err := c.Get(context.Background(), req.NamespacedName, got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status.LastRenderTime == nil || !got.Status.LastRenderTime.Equal(&renderedAt) {
+		t.Fatalf("LastRenderTime = %v, want %v", got.Status.LastRenderTime, renderedAt)
+	}
+	if updated := meta.FindStatusCondition(got.Status.Conditions, ConditionRendered); updated == nil || !updated.LastTransitionTime.Equal(&cond.LastTransitionTime) {
+		t.Fatalf("condition transition time changed on a successful rerender: %+v", updated)
+	}
 
 	r.renders = fakeRenders{}
-	if _, err := r.Reconcile(context.Background(), req); err != nil || applies != 1 {
+	if _, err := r.Reconcile(context.Background(), req); err != nil || applies != 2 {
 		t.Fatalf("an unrendered Hardware must be left alone: err = %v, applies = %d", err, applies)
 	}
 }

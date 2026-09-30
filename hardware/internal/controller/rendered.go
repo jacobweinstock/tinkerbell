@@ -67,7 +67,8 @@ func (r *RenderedReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 
 	want := renderedCondition(st)
 	if have := meta.FindStatusCondition(hw.Status.Conditions, ConditionRendered); have != nil {
-		if have.Status == want.Status && have.Reason == want.Reason && have.Message == want.Message && have.ObservedGeneration == want.ObservedGeneration {
+		lastRenderTimeMatches := hw.Status.LastRenderTime != nil && hw.Status.LastRenderTime.Equal(&st.LastRenderTime)
+		if have.Status == want.Status && have.Reason == want.Reason && have.Message == want.Message && have.ObservedGeneration == want.ObservedGeneration && lastRenderTimeMatches {
 			return reconcile.Result{}, nil
 		}
 		if have.Status == want.Status {
@@ -80,7 +81,10 @@ func (r *RenderedReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 		Kind:       &kind,
 		APIVersion: &apiVersion,
 		Metadata:   tinkerbell.HardwareApplyMetadata{Name: &hw.Name, Namespace: &hw.Namespace},
-		Status:     &tinkerbell.HardwareStatusApplyConfiguration{Conditions: []metav1.Condition{want}},
+		Status: &tinkerbell.HardwareStatusApplyConfiguration{
+			Conditions:     []metav1.Condition{want},
+			LastRenderTime: &st.LastRenderTime,
+		},
 	}
 	if err := r.client.Status().Apply(ctx, apply, client.FieldOwner(fieldOwner), client.ForceOwnership); err != nil {
 		return reconcile.Result{}, fmt.Errorf("apply %s condition to hardware %s: %w", ConditionRendered, req.NamespacedName, err)

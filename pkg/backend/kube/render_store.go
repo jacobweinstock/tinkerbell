@@ -29,6 +29,7 @@ type renderStore struct {
 	mapper    meta.RESTMapper
 	get       func(context.Context, types.NamespacedName) (*tinkerbell.Hardware, error)
 	resolve   func(context.Context, *tinkerbell.Hardware) (map[string]any, error)
+	now       func() metav1.Time
 	queue     workqueue.TypedRateLimitingInterface[types.NamespacedName]
 	log       logr.Logger
 
@@ -48,6 +49,7 @@ type informerGetter interface {
 type renderEntry struct {
 	resourceVersion string               // of the Hardware last rendered
 	generation      int64                // of the Hardware last rendered
+	lastRenderTime  metav1.Time          // when the latest render attempt completed
 	err             error                // rendering that resourceVersion failed
 	good            *tinkerbell.Hardware // last successful rendering, nil if none
 	identity        bool                 // good is the stored object: nothing needed rendering
@@ -69,6 +71,7 @@ func newRenderStore(
 		mapper:    mapper,
 		get:       get,
 		resolve:   resolve,
+		now:       metav1.Now,
 		log:       log,
 		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
 			workqueue.DefaultTypedControllerRateLimiter[types.NamespacedName](),
@@ -159,7 +162,7 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 	if !needsRendering(hw) {
 		s.track(ctx, key, nil)
 		s.mu.Lock()
-		s.entries[key] = &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation, good: hw, identity: true}
+		s.entries[key] = &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation, lastRenderTime: s.now(), good: hw, identity: true}
 		s.mu.Unlock()
 		s.notifyRendered(key)
 		return true
@@ -169,6 +172,7 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 	e := &renderEntry{resourceVersion: hw.ResourceVersion, generation: hw.Generation}
 	refs, refErr := s.resolve(ctx, hw)
 	e.good, err = renderHardware(hw, refs)
+	e.lastRenderTime = s.now()
 	e.identity = e.good == hw
 	var servingPrevious bool
 	if err != nil {
@@ -196,6 +200,8 @@ func (s *renderStore) render(ctx context.Context, key types.NamespacedName) bool
 type RenderStatus struct {
 	// Generation is the Hardware generation rendered.
 	Generation int64
+	// LastRenderTime is when the latest render attempt completed.
+	LastRenderTime metav1.Time
 	// Templated reports whether the Hardware has templates.
 	Templated bool
 	// Err is the latest rendering error, if any.
@@ -215,6 +221,7 @@ func (s *renderStore) status(key types.NamespacedName) (RenderStatus, bool) {
 	}
 	return RenderStatus{
 		Generation:      e.generation,
+		LastRenderTime:  e.lastRenderTime,
 		Templated:       !e.identity,
 		Err:             e.err,
 		ServingPrevious: e.err != nil && e.good != nil,

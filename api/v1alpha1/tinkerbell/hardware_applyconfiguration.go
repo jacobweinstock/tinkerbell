@@ -38,7 +38,8 @@ type HardwareApplyMetadata struct {
 type HardwareStatusApplyConfiguration struct {
 	Attributes *HardwareAttributesApplyConfiguration `json:"attributes,omitempty"`
 	// Conditions lists only the condition types the applying field manager owns.
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	Conditions     []metav1.Condition `json:"conditions,omitempty"`
+	LastRenderTime *metav1.Time       `json:"lastRenderTime,omitempty"`
 }
 
 // HardwareAttributesApplyConfiguration carries only the leaf a given writer

@@ -422,6 +422,9 @@ type Disk struct {
 type HardwareStatus struct {
 	//+optional
 	State HardwareState `json:"state,omitempty"`
+	// LastRenderTime is when the backend completed its latest Hardware render attempt.
+	// +optional
+	LastRenderTime *metav1.Time `json:"lastRenderTime,omitempty"`
 
 	// Attributes describes the hardware itself, as observed by Tinkerbell. It is
 	// split by collection path rather than merged, so each collector owns a

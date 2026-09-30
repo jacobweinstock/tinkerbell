@@ -136,6 +136,8 @@ func TestRenderStoreServesRenderedHardware(t *testing.T) {
 	ctx := context.Background()
 	hws, res := &fakeHardware{}, &fakeResolver{refs: netRefs("example.org")}
 	s := newTestStore(hws, res, &fakeInformers{})
+	renderedAt := metav1.NewTime(time.Unix(100, 0))
+	s.now = func() metav1.Time { return renderedAt }
 	hw := templated("1")
 	hws.set(hw)
 
@@ -267,6 +269,8 @@ func TestRenderStoreForgetsDeletedHardware(t *testing.T) {
 	ctx := context.Background()
 	hws, res := &fakeHardware{}, &fakeResolver{refs: netRefs("example.org")}
 	s := newTestStore(hws, res, &fakeInformers{})
+	renderedAt := metav1.NewTime(time.Unix(100, 0))
+	s.now = func() metav1.Time { return renderedAt }
 	hw := templated("1")
 	hws.set(hw)
 	s.render(ctx, client.ObjectKeyFromObject(hw))
@@ -310,6 +314,8 @@ func TestRenderStoreStatusAndNotify(t *testing.T) {
 	ctx := context.Background()
 	hws, res := &fakeHardware{}, &fakeResolver{refs: netRefs("example.org")}
 	s := newTestStore(hws, res, &fakeInformers{})
+	renderedAt := metav1.NewTime(time.Unix(100, 0))
+	s.now = func() metav1.Time { return renderedAt }
 	hw := templated("1")
 	hw.Generation = 7
 	key := client.ObjectKeyFromObject(hw)
@@ -323,17 +329,18 @@ func TestRenderStoreStatusAndNotify(t *testing.T) {
 	}
 
 	st, ok := s.status(key)
-	if !ok || st.Generation != 7 || !st.Templated || st.Err != nil {
+	if !ok || st.Generation != 7 || !st.Templated || st.Err != nil || !st.LastRenderTime.Equal(&renderedAt) {
 		t.Fatalf("status = %+v, %v", st, ok)
 	}
 
+	renderedAt = metav1.NewTime(time.Unix(101, 0))
 	res.set(nil, ErrReferenceDenied)
 	s.render(ctx, key)
 	if len(notified) != 2 {
 		t.Fatalf("a render must notify, got %v", notified)
 	}
 	st, _ = s.status(key)
-	if !st.ServingPrevious || !errors.Is(st.Err, ErrReferenceDenied) {
+	if !st.ServingPrevious || !errors.Is(st.Err, ErrReferenceDenied) || !st.LastRenderTime.Equal(&renderedAt) {
 		t.Fatalf("status = %+v", st)
 	}
 
