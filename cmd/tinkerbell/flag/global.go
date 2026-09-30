@@ -46,8 +46,9 @@ type EmbeddedGlobalConfig struct {
 }
 
 type BackendKubeOptions struct {
-	QPS   float32
-	Burst int
+	QPS                float32
+	Burst              int
+	HardwareTemplating bool
 }
 
 type TLSConfig struct {
@@ -73,6 +74,7 @@ func RegisterGlobal(fs *Set, gc *GlobalConfig) {
 	fs.Register(BackendKubeConfig, ffval.NewValueDefault(&gc.BackendKubeConfig, gc.BackendKubeConfig))
 	fs.Register(BackendKubeNamespace, ffval.NewValueDefault(&gc.BackendKubeNamespace, gc.BackendKubeNamespace))
 	fs.Register(KubeQPS, ffval.NewValueDefault(&gc.BackendKubeOptions.QPS, gc.BackendKubeOptions.QPS))
+	fs.Register(KubeHardwareTemplating, ffval.NewValueDefault(&gc.BackendKubeOptions.HardwareTemplating, gc.BackendKubeOptions.HardwareTemplating))
 	fs.RegisterFamily(BindAddr, V4, &ntip.Addr{Addr: &gc.BindAddr})
 	fs.RegisterFamily(BindAddr, V6, &ntip.Addr{Addr: &gc.BindAddrV6})
 	fs.RegisterFamily(HTTPPort, V4, ffval.NewValueDefault(&gc.HTTPPort, gc.HTTPPort))
@@ -148,6 +150,11 @@ var KubeQPS = Config{
 var KubeBurst = Config{
 	Name:  "backend-kube-burst",
 	Usage: "[kube] maximum burst for throttle in the Kubernetes client. A 0 value equates to 10 (client sdk constraint). A negative value disables client-side burst limiting.",
+}
+
+var KubeHardwareTemplating = Config{
+	Name:  "backend-kube-hardware-templating-enabled",
+	Usage: "[kube] render Go templates in Hardware spec string fields; existing literal '{{' must be written as {{ \"{{\" }} first",
 }
 
 // OTEL flags.

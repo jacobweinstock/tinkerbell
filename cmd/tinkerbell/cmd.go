@@ -17,6 +17,7 @@ import (
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tinkerbell/tinkerbell/cmd/tinkerbell/flag"
 	"github.com/tinkerbell/tinkerbell/crd"
+	"github.com/tinkerbell/tinkerbell/pkg/backend/kube"
 	"github.com/tinkerbell/tinkerbell/pkg/build"
 	"github.com/tinkerbell/tinkerbell/pkg/constant"
 	"github.com/tinkerbell/tinkerbell/pkg/otel"
@@ -392,12 +393,16 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 			cliLog.Info("CRD migrations completed")
 		}
 
-		b, err := newKubeBackend(ctx, globals.BackendKubeConfig, "", globals.BackendKubeNamespace, enabledIndexes(globals.EnableSmee, globals.EnableTootles, globals.EnableTinkServer, globals.EnableSecondStar), WithQPS(globals.BackendKubeOptions.QPS), WithBurst(globals.BackendKubeOptions.Burst), WithReferenceRules(tc.ReferenceAllowListRules, tc.ReferenceDenyListRules))
+		b, err := newKubeBackend(ctx, globals.BackendKubeConfig, "", globals.BackendKubeNamespace, enabledIndexes(globals.EnableSmee, globals.EnableTootles, globals.EnableTinkServer, globals.EnableSecondStar), WithQPS(globals.BackendKubeOptions.QPS), WithBurst(globals.BackendKubeOptions.Burst), WithReferenceRules(tc.ReferenceAllowListRules, tc.ReferenceDenyListRules), WithHardwareTemplating(globals.BackendKubeOptions.HardwareTemplating, log))
 		if err != nil {
 			return startupErr(fmt.Errorf("failed to create kube backend: %w", err))
 		}
 		s.Config.Backend = b
 		h.Config.SetBackendFromFilterer(b)
+		if b.HardwareTemplating {
+			s.Config.Backend = b.RenderedReader(kube.ConsumerSmee)
+			h.Config.SetBackendFromFilterer(b.RenderedReader(kube.ConsumerTootles))
+		}
 		ts.Config.SetBackends(b)
 		tc.Config.Client = b.ClientConfig
 		tc.Config.ReferenceResolver = b

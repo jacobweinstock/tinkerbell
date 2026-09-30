@@ -44,6 +44,7 @@ const (
 
 type referenceResolver interface {
 	ResolveReferences(ctx context.Context, consumer string, hw *v1alpha1.Hardware) (map[string]any, error)
+	RenderHardware(hw *v1alpha1.Hardware, references map[string]any) (*v1alpha1.Hardware, error)
 }
 
 // Reconciler is a type for managing Workflows.
@@ -275,6 +276,22 @@ func (r *Reconciler) processWorkflow(ctx context.Context, logger logr.Logger, st
 		)
 	}
 
+	references, refErr := r.references.ResolveReferences(ctx, referenceConsumer, &hardware)
+	rendered, err := r.references.RenderHardware(&hardware, references)
+	if err != nil {
+		journal.Log(ctx, "error rendering hardware")
+		stored.Status.TemplateRendering = v1alpha1.TemplateRenderingFailed
+		stored.Status.SetConditionIfDifferent(v1alpha1.WorkflowCondition{
+			Type:    v1alpha1.TemplateRenderedSuccess,
+			Status:  metav1.ConditionFalse,
+			Reason:  reasonError,
+			Message: fmt.Sprintf("error rendering hardware: %v", errors.Join(refErr, err)),
+			Time:    &metav1.Time{Time: metav1.Now().UTC()},
+		})
+		return err
+	}
+	hardware = *rendered
+
 	data := make(map[string]interface{})
 	for key, val := range stored.Spec.HardwareMap {
 		data[key] = val
@@ -292,7 +309,6 @@ func (r *Reconciler) processWorkflow(ctx context.Context, logger logr.Logger, st
 		return v
 	}()
 	data[templateDataHardwareLegacy] = contract
-	references, refErr := r.references.ResolveReferences(ctx, referenceConsumer, &hardware)
 	data[templateDataReferences] = references
 
 	tinkWf, err := renderTemplateHardware(stored.Name, pointerToValue(tpl.Spec.Data), data)
