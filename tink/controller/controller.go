@@ -34,6 +34,7 @@ type Config struct {
 
 type referenceResolver interface {
 	ResolveReferences(ctx context.Context, consumer string, hw *tinkerbell.Hardware) (map[string]any, error)
+	RenderHardware(hw *tinkerbell.Hardware, references map[string]any) (*tinkerbell.Hardware, error)
 }
 
 type Option func(*Config)

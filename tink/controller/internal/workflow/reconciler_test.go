@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	v1alpha1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
@@ -62,12 +63,20 @@ func GetFakeClientBuilder() *fake.ClientBuilder {
 }
 
 type fakeReferences struct {
-	refs map[string]any
-	err  error
+	refs   map[string]any
+	err    error
+	render func(*v1alpha1.Hardware) (*v1alpha1.Hardware, error)
 }
 
 func (f fakeReferences) ResolveReferences(_ context.Context, _ string, _ *v1alpha1.Hardware) (map[string]any, error) {
 	return f.refs, f.err
+}
+
+func (f fakeReferences) RenderHardware(hw *v1alpha1.Hardware, _ map[string]any) (*v1alpha1.Hardware, error) {
+	if f.render != nil {
+		return f.render(hw)
+	}
+	return hw, nil
 }
 
 var minimalTemplate = `version: "0.1"
@@ -2156,4 +2165,63 @@ func TestReconcileFailedWorkflowWinsStalePatch(t *testing.T) {
 	if diff := cmp.Diff(committed, got); diff != "" {
 		t.Fatalf("committed FAILED workflow changed (-want +got):\n%s", diff)
 	}
+}
+
+func TestProcessWorkflowUsesRenderedHardware(t *testing.T) {
+	newObjects := func() (*v1alpha1.Hardware, *v1alpha1.Template, *v1alpha1.Workflow) {
+		hw := &v1alpha1.Hardware{
+			ObjectMeta: metav1.ObjectMeta{Name: "machine1", Namespace: "default"},
+			Spec:       v1alpha1.HardwareSpec{Disks: []v1alpha1.Disk{{Device: "{{ .references.disk.name }}"}}},
+		}
+		tpl := &v1alpha1.Template{
+			ObjectMeta: metav1.ObjectMeta{Name: "debian", Namespace: "default"},
+			Spec:       v1alpha1.TemplateSpec{Data: &templateWithDiskTemplate},
+		}
+		wf := &v1alpha1.Workflow{
+			ObjectMeta: metav1.ObjectMeta{Name: "debian", Namespace: "default"},
+			Spec: v1alpha1.WorkflowSpec{
+				TemplateRef: "debian",
+				HardwareRef: "machine1",
+				HardwareMap: map[string]string{"device_1": "3c:ec:ef:4c:4f:54"},
+			},
+		}
+		return hw, tpl, wf
+	}
+
+	t.Run("rendered values reach the Template", func(t *testing.T) {
+		hw, tpl, wf := newObjects()
+		r := &Reconciler{
+			client: GetFakeClientBuilder().WithObjects(hw, tpl).Build(),
+			references: fakeReferences{render: func(hw *v1alpha1.Hardware) (*v1alpha1.Hardware, error) {
+				out := hw.DeepCopy()
+				out.Spec.Disks[0].Device = "/dev/sdb"
+				return out, nil
+			}},
+		}
+		if err := r.processWorkflow(context.Background(), logr.Discard(), wf); err != nil {
+			t.Fatal(err)
+		}
+		if got := wf.Status.Tasks[0].Actions[0].Environment["DEST_DISK"]; got != "/dev/sdb" {
+			t.Fatalf("DEST_DISK = %q, want the rendered /dev/sdb", got)
+		}
+	})
+
+	t.Run("a render failure fails the Workflow", func(t *testing.T) {
+		hw, tpl, wf := newObjects()
+		r := &Reconciler{
+			client: GetFakeClientBuilder().WithObjects(hw, tpl).Build(),
+			references: fakeReferences{render: func(*v1alpha1.Hardware) (*v1alpha1.Hardware, error) {
+				return nil, errors.New("missing reference")
+			}},
+		}
+		if err := r.processWorkflow(context.Background(), logr.Discard(), wf); err == nil {
+			t.Fatal("expected an error")
+		}
+		if wf.Status.TemplateRendering != v1alpha1.TemplateRenderingFailed {
+			t.Fatalf("TemplateRendering = %q", wf.Status.TemplateRendering)
+		}
+		if c := wf.Status.Conditions; len(c) != 1 || !strings.Contains(c[0].Message, "error rendering hardware: missing reference") {
+			t.Fatalf("conditions = %+v", c)
+		}
+	})
 }
