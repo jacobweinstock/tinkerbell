@@ -22,6 +22,7 @@ package tinkerbell
 
 import (
 	"github.com/tinkerbell/tinkerbell/api/v1alpha2/tinkerbell/bmc"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -901,7 +902,7 @@ func (in *HardwareStatus) DeepCopyInto(out *HardwareStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]bmc.Condition, len(*in))
+		*out = make([]v1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

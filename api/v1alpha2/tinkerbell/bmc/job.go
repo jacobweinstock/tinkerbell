@@ -70,7 +70,9 @@ type JobSpec struct {
 type JobStatus struct {
 	// Conditions represents the latest available observations of an object's current state.
 	// +optional
-	Conditions []Condition `json:"conditions,omitempty"`
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// StartTime represents time when the Job controller started processing a job.
 	// +optional

@@ -1,7 +1,6 @@
 package tinkerbell
 
 import (
-	"github.com/tinkerbell/tinkerbell/api/v1alpha2/tinkerbell/bmc"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -549,5 +548,7 @@ type StorageDevice struct {
 type HardwareStatus struct {
 	// Conditions represents the latest available observations of an object's current state.
 	// +optional
-	Conditions []bmc.Condition `json:"conditions,omitempty"`
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
