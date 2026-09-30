@@ -12,13 +12,21 @@ import (
 // renderWorkers is the number of Hardware rendered concurrently.
 const renderWorkers = 4
 
-// RenderHardware returns hw with its templates rendered against references when
-// Hardware templating is enabled, and hw unchanged when it is not.
-func (b *Backend) RenderHardware(hw *tinkerbell.Hardware, references map[string]any) (*tinkerbell.Hardware, error) {
+// RenderedHardware returns the stored or latest successfully rendered Hardware.
+// When templating is enabled and no successful rendering exists yet, it returns
+// a not-found error until the render store is ready.
+func (b *Backend) RenderedHardware(_ context.Context, hw *tinkerbell.Hardware) (*tinkerbell.Hardware, error) {
 	if !b.HardwareTemplating {
 		return hw, nil
 	}
-	return renderHardware(hw, references)
+	if b.store == nil {
+		return nil, hardwareNotRenderedError{hardwareNotFoundError{name: hw.Name, namespace: hw.Namespace}}
+	}
+	rendered, ok := b.store.rendered(hw)
+	if !ok {
+		return nil, hardwareNotRenderedError{hardwareNotFoundError{name: hw.Name, namespace: hw.Namespace}}
+	}
+	return rendered, nil
 }
 
 // RenderedReader serves Hardware rendered under Hardware-wide reference policy.

@@ -39,12 +39,28 @@ func TestRenderedReader(t *testing.T) {
 	}
 }
 
-func TestRenderHardwareDisabled(t *testing.T) {
+func TestRenderedHardware(t *testing.T) {
 	hw := templated("1")
+	if got, err := (&Backend{}).RenderedHardware(context.Background(), hw); err != nil || got != hw {
+		t.Fatalf("with templating disabled got %v, %v; want stored Hardware", got, err)
+	}
 
-	got, err := (&Backend{}).RenderHardware(hw, nil)
-	if err != nil || got != hw {
-		t.Fatalf("with templating disabled got %v, %v; want the stored Hardware", got, err)
+	hws := &fakeHardware{}
+	store := newTestStore(hws, &fakeResolver{refs: netRefs("example.org")}, &fakeInformers{})
+	b := &Backend{HardwareTemplating: true, store: store}
+	hws.set(hw)
+	if got, err := b.RenderedHardware(context.Background(), hw); err == nil || got != nil {
+		t.Fatalf("before first render got %v, %v; want not-ready error", got, err)
+	}
+	if !store.render(context.Background(), client.ObjectKeyFromObject(hw)) {
+		t.Fatal("render failed")
+	}
+	got, err := b.RenderedHardware(context.Background(), hw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *got.Spec.UserData != "domain=example.org" {
+		t.Fatalf("UserData = %q, want rendered value", *got.Spec.UserData)
 	}
 }
 

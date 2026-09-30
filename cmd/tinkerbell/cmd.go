@@ -17,7 +17,6 @@ import (
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tinkerbell/tinkerbell/cmd/tinkerbell/flag"
 	"github.com/tinkerbell/tinkerbell/crd"
-	"github.com/tinkerbell/tinkerbell/pkg/backend/kube"
 	"github.com/tinkerbell/tinkerbell/pkg/build"
 	"github.com/tinkerbell/tinkerbell/pkg/constant"
 	"github.com/tinkerbell/tinkerbell/pkg/otel"
@@ -405,7 +404,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		}
 		ts.Config.SetBackends(b)
 		tc.Config.Client = b.ClientConfig
-		tc.Config.ReferenceResolver = b
+		tc.Config.HardwareReader = b
 		rc.Config.Client = b.ClientConfig
 		ssc.Config.Backend = b
 		if uic.Config.EnableAutoLogin {
