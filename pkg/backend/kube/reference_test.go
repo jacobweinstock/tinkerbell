@@ -1,11 +1,109 @@
-package workflow
+package kube
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+func TestResolveReferences(t *testing.T) {
+	hw := &tinkerbell.Hardware{
+		ObjectMeta: metav1.ObjectMeta{Name: "machine1", Namespace: "tink-system"},
+		Spec: tinkerbell.HardwareSpec{References: map[string]tinkerbell.Reference{
+			"cm":     {Name: "cm1", Namespace: "tink-system", Version: "v1", Resource: "configmaps"},
+			"secret": {Name: "s1", Namespace: "tink-system", Version: "v1", Resource: "secrets"},
+		}},
+	}
+
+	tests := map[string]struct {
+		allow, deny []string
+		consumer    string
+		readErr     error
+		want        []string
+		wantErr     bool
+	}{
+		"deny all by default": {
+			wantErr: true,
+		},
+		"allow list overrides the default deny": {
+			allow: []string{`{"source":{"namespace":["tink-system"]}}`},
+			want:  []string{"cm", "secret"},
+		},
+		"deny list without allow list": {
+			deny:    []string{`{"reference":{"resource":["secrets"]}}`},
+			want:    []string{"cm"},
+			wantErr: true,
+		},
+		"rules can match the consumer": {
+			allow:    []string{`{"consumer":["tink-controller"],"reference":{"resource":["configmaps"]}}`},
+			consumer: "tink-controller",
+			want:     []string{"cm"},
+			wantErr:  true,
+		},
+		"rules for another consumer do not match": {
+			allow:    []string{`{"consumer":["smee"]}`},
+			consumer: "tink-controller",
+			wantErr:  true,
+		},
+		"invalid rule": {
+			allow:   []string{"not a rule"},
+			wantErr: true,
+		},
+		"read error": {
+			allow:   []string{`{"source":{"namespace":["tink-system"]}}`},
+			readErr: errors.New("boom"),
+			wantErr: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			b := &Backend{
+				dynamicClient:           &fakeDynamicClient{gvr: schema.GroupVersionResource{Version: "v1"}, error: tt.readErr},
+				ReferenceAllowListRules: tt.allow,
+				ReferenceDenyListRules:  tt.deny,
+			}
+			got, err := b.ResolveReferences(context.Background(), tt.consumer, hw)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			var names []string
+			for k := range got {
+				names = append(names, k)
+			}
+			slices.Sort(names)
+			if !slices.Equal(names, tt.want) {
+				t.Errorf("resolved %v, want %v", names, tt.want)
+			}
+		})
+	}
+}
+
+// TestDocumentedRulesMatchWithConsumer guards the rule examples in
+// docs/technical/REFERENCES.md, which predate the consumer field.
+func TestDocumentedRulesMatchWithConsumer(t *testing.T) {
+	ed := evaluationData{
+		Consumer:  "tink-controller",
+		Source:    source{Name: "example1", Namespace: "tink-system"},
+		Reference: tinkerbell.Reference{Namespace: "example", Name: "exampleLVM", Group: "example.org", Version: "v1alpha1", Resource: "lvms"},
+	}
+	for _, rule := range []string{
+		`{"source":{"namespace":["tink-system"]}}`,
+		`{"reference":{"resource":["lvms"]}}`,
+		`{"source":{"namespace":["tink-system"]},"reference":{"resource":["lvms"]}}`,
+		`{"source":{"name":["example1"],"namespace":["tink-system"]},"reference":{"name":["exampleLVM"],"namespace":["example"],"resource":["lvms"]}}`,
+	} {
+		matched, _, err := evaluate(context.Background(), []string{rule}, ed)
+		if err != nil || !matched {
+			t.Errorf("rule %s: matched = %v, err = %v", rule, matched, err)
+		}
+	}
+}
 
 func TestMatch(t *testing.T) {
 	tests := map[string]struct {

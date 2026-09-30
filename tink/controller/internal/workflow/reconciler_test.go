@@ -13,7 +13,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,13 +61,13 @@ func GetFakeClientBuilder() *fake.ClientBuilder {
 		})
 }
 
-type fakeDynamicClient struct {
-	unstructured map[string]interface{}
-	error        error
+type fakeReferences struct {
+	refs map[string]any
+	err  error
 }
 
-func (f *fakeDynamicClient) DynamicRead(_ context.Context, _ schema.GroupVersionResource, _, _ string) (map[string]interface{}, error) {
-	return f.unstructured, f.error
+func (f fakeReferences) ResolveReferences(_ context.Context, _ string, _ *v1alpha1.Hardware) (map[string]any, error) {
+	return f.refs, f.err
 }
 
 var minimalTemplate = `version: "0.1"
@@ -1025,9 +1024,9 @@ tasks:
 			kc = kc.WithStatusSubresource(tc.seedWorkflow)
 		}
 		controller := &Reconciler{
-			client:        kc.Build(),
-			nowFunc:       TestTime.Now,
-			dynamicClient: &fakeDynamicClient{},
+			client:     kc.Build(),
+			nowFunc:    TestTime.Now,
+			references: fakeReferences{},
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -2012,9 +2011,9 @@ func TestReconcileWithMultipleTasksAndAgents(t *testing.T) {
 				kc = kc.WithStatusSubresource(tc.seedWorkflow)
 			}
 			controller := &Reconciler{
-				client:        kc.Build(),
-				nowFunc:       TestTime.Now,
-				dynamicClient: &fakeDynamicClient{},
+				client:     kc.Build(),
+				nowFunc:    TestTime.Now,
+				references: fakeReferences{},
 			}
 
 			got, gotErr := controller.Reconcile(context.Background(), tc.req)
@@ -2127,9 +2126,9 @@ func TestReconcileFailedWorkflowWinsStalePatch(t *testing.T) {
 		},
 	})
 	controller := &Reconciler{
-		client:        cc,
-		nowFunc:       TestTime.Now,
-		dynamicClient: &fakeDynamicClient{},
+		client:     cc,
+		nowFunc:    TestTime.Now,
+		references: fakeReferences{},
 	}
 	req := reconcile.Request{NamespacedName: client.ObjectKeyFromObject(workflow)}
 

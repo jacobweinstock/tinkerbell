@@ -9,6 +9,10 @@ import (
 type TinkControllerConfig struct {
 	Config   *controller.Config
 	LogLevel int
+	// ReferenceAllowListRules and ReferenceDenyListRules configure the kube
+	// backend's reference policy; the flags keep their original names.
+	ReferenceAllowListRules []string
+	ReferenceDenyListRules  []string
 }
 
 func RegisterTinkControllerFlags(fs *Set, t *TinkControllerConfig) {
@@ -16,8 +20,8 @@ func RegisterTinkControllerFlags(fs *Set, t *TinkControllerConfig) {
 	fs.Register(TinkControllerLeaderElectionNamespace, ffval.NewValueDefault(&t.Config.LeaderElectionNamespace, t.Config.LeaderElectionNamespace))
 	fs.Register(TinkControllerMaxConcurrentReconciles, ffval.NewValueDefault(&t.Config.MaxConcurrentReconciles, t.Config.MaxConcurrentReconciles))
 	fs.Register(TinkControllerLogLevel, ffval.NewValueDefault(&t.LogLevel, t.LogLevel))
-	fs.Register(TinkControllerReferenceAllowListRules, delimitedlist.New(&t.Config.ReferenceAllowListRules, '|'))
-	fs.Register(TinkControllerReferenceDenyListRules, delimitedlist.New(&t.Config.ReferenceDenyListRules, '|'))
+	fs.Register(TinkControllerReferenceAllowListRules, delimitedlist.New(&t.ReferenceAllowListRules, '|'))
+	fs.Register(TinkControllerReferenceDenyListRules, delimitedlist.New(&t.ReferenceDenyListRules, '|'))
 }
 
 var TinkControllerEnableLeaderElection = Config{

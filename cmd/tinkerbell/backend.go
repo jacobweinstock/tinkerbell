@@ -28,6 +28,13 @@ func WithBurst(burst int) kubeBackendOpt {
 	}
 }
 
+func WithReferenceRules(allow, deny []string) kubeBackendOpt {
+	return func(k *kube.Backend) {
+		k.ReferenceAllowListRules = allow
+		k.ReferenceDenyListRules = deny
+	}
+}
+
 func newKubeBackend(ctx context.Context, kubeconfig, apiurl, namespace string, indexes map[kube.IndexType]kube.Index, opts ...kubeBackendOpt) (*kube.Backend, error) {
 	defaultConfig := kube.Backend{
 		ConfigFilePath: kubeconfig,
