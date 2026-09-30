@@ -27,6 +27,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/pkg/constant"
 	"github.com/tinkerbell/tinkerbell/pkg/data"
 	"github.com/tinkerbell/tinkerbell/pkg/listener"
+	"github.com/tinkerbell/tinkerbell/smee/internal/bootstrap"
 	"github.com/tinkerbell/tinkerbell/smee/internal/dhcp"
 	v6 "github.com/tinkerbell/tinkerbell/smee/internal/dhcp/dhcpv6"
 	reservationv6 "github.com/tinkerbell/tinkerbell/smee/internal/dhcp/dhcpv6/handler/reservation"
@@ -89,6 +90,7 @@ const (
 	IPXEScriptURI = "/ipxe/script/"
 	ISOURI        = "/iso/"
 	ISOURIV6      = "/iso6/"
+	BootstrapURI  = "/bootstrap/"
 
 	// DHCPv6ServerDUIDHashPrefix scopes derived server DUIDs to Smee DHCPv6.
 	DHCPv6ServerDUIDHashPrefix = "tinkerbell:smee:dhcpv6:"
@@ -144,6 +146,8 @@ func (d *DHCPv6Mode) Type() string {
 type Config struct {
 	// Backend is the backend to use for getting data.
 	Backend BackendReader
+	// Bootstrap is the configuration for serving per-host bootstrap data.
+	Bootstrap Bootstrap
 	// DHCP is the configuration for the DHCP service.
 	DHCP DHCP
 	// DHCPv6 is the configuration for the DHCPv6 service.
@@ -172,6 +176,22 @@ type Config struct {
 // builds a Bind must now set Enabled: an address alone no longer serves a
 // family, and Start reports the family as unserved without it.
 type Bind = listener.Bind
+
+// Bootstrap configures delivery of per-host configuration to the OS before its
+// networking starts. The same archive reaches the machine two ways: patched
+// into the ISO's reserved slot for virtual media, or fetched over HTTP as an
+// extra initrd for iPXE. Only the iPXE path is configured here; the ISO path
+// keys off the source image's published layout.
+type Bootstrap struct {
+	// BaseURL and BaseURLV6 are what iPXE clients are told to fetch from. Set
+	// https as the scheme when TLS terminates at Smee. They must be reachable
+	// by the machine being provisioned, not by Smee, so the host and port
+	// default to the advertised public address rather than the bind address.
+	BaseURL   *url.URL
+	BaseURLV6 *url.URL
+	// Enabled is a flag to enable or disable serving bootstrap archives.
+	Enabled bool
+}
 
 type Syslog struct {
 	// V4 and V6 are the per-family listen addresses.
@@ -428,6 +448,13 @@ func NewConfig(c Config) *Config {
 			PatchMagicString:  "",
 			StaticIPAMEnabled: false,
 		},
+		Bootstrap: Bootstrap{
+			Enabled: false,
+			// Path is the route Smee serves and is not configurable; only the
+			// scheme, host and port are.
+			BaseURL:   &url.URL{Scheme: schemeHTTP, Path: BootstrapURI},
+			BaseURLV6: &url.URL{Scheme: schemeHTTP, Path: BootstrapURI},
+		},
 		OTEL: OTEL{
 			Endpoint:         "",
 			InsecureEndpoint: false,
@@ -526,8 +553,39 @@ func (c *Config) ScriptHandler(log logr.Logger) http.Handler {
 		StaticIPXEV6Enabled:   c.DHCPv6.Enabled && c.DHCPv6.Mode == DHCPv6ModeAutoStateless,
 		KernelName:            c.IPXE.HTTPScriptServer.KernelName,
 		InitrdName:            c.IPXE.HTTPScriptServer.InitrdName,
+		BootstrapBaseURL:      c.bootstrapBaseURL(c.Bootstrap.BaseURL),
+		BootstrapBaseURLV6:    c.bootstrapBaseURL(c.Bootstrap.BaseURLV6),
 	}
+	if c.Bootstrap.Enabled && jh.BootstrapBaseURL == nil && jh.BootstrapBaseURLV6 == nil {
+		// Otherwise the extra initrd is silently omitted and machines boot
+		// without configuration, with nothing to indicate why.
+		log.Info("bootstrap delivery is enabled but no reachable base URL could be determined, iPXE clients will not receive bootstrap data",
+			"hint", "set --public-ip-v4/--public-ip-v6, or --bootstrap-base-url-v4/--bootstrap-base-url-v6")
+	}
+
 	return jh.HandlerFunc()
+}
+
+// BootstrapHandler returns an http.Handler that serves per-host configuration
+// archives for iPXE to load as an additional initrd. Returns nil if bootstrap
+// delivery is disabled.
+func (c *Config) BootstrapHandler(log logr.Logger) http.Handler {
+	if !c.Bootstrap.Enabled {
+		return nil
+	}
+	bh := bootstrap.Handler{Logger: log, Backend: c.Backend}
+
+	return bh.HandlerFunc()
+}
+
+// bootstrapBaseURL returns u for use in a boot script, or nil when delivery is
+// disabled or no address was resolved for that family.
+func (c *Config) bootstrapBaseURL(u *url.URL) *url.URL {
+	if !c.Bootstrap.Enabled || u == nil || u.Host == "" {
+		return nil
+	}
+
+	return u
 }
 
 // syslogHost returns the host used for the syslog_host kernel parameter in iPXE scripts.

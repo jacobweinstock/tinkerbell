@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tinkerbell/tinkerbell/smee/internal/bootstrap"
 	"github.com/tinkerbell/tinkerbell/smee/internal/hardware"
 	"github.com/tinkerbell/tinkerbell/smee/internal/metric"
 	"go.opentelemetry.io/otel/attribute"
@@ -36,6 +38,11 @@ type Handler struct {
 	StaticIPXEV6Enabled   bool
 	KernelName            string // name of the kernel file
 	InitrdName            string // name of the initrd file
+	// BootstrapBaseURL and BootstrapBaseURLV6 are the bases for per-host
+	// configuration archives, e.g. "http://1.2.3.4:7171/bootstrap/". A nil or
+	// hostless URL disables bootstrap delivery for that family.
+	BootstrapBaseURL   *url.URL
+	BootstrapBaseURLV6 *url.URL
 }
 
 type addressFamily string
@@ -52,6 +59,7 @@ type familySettings struct {
 	downloadURL        string
 	tinkServerGRPCAddr string
 	extraKernelParams  []string
+	bootstrapBaseURL   *url.URL
 }
 
 func (h *Handler) settingsFor(family addressFamily) familySettings {
@@ -62,6 +70,7 @@ func (h *Handler) settingsFor(family addressFamily) familySettings {
 			downloadURL:        h.OSIEURLv6,
 			tinkServerGRPCAddr: h.TinkServerGRPCAddrV6,
 			extraKernelParams:  h.ExtraKernelParamsV6,
+			bootstrapBaseURL:   h.BootstrapBaseURLV6,
 		}
 	}
 	return familySettings{
@@ -70,6 +79,7 @@ func (h *Handler) settingsFor(family addressFamily) familySettings {
 		downloadURL:        h.OSIEURL,
 		tinkServerGRPCAddr: h.TinkServerGRPCAddr,
 		extraKernelParams:  h.ExtraKernelParams,
+		bootstrapBaseURL:   h.BootstrapBaseURL,
 	}
 }
 
@@ -234,6 +244,18 @@ func getMAC(urlPath string) (net.HardwareAddr, error) {
 	return ha, nil
 }
 
+// bootstrapURL returns the per-host configuration archive URL, or "" when
+// bootstrap delivery is not configured for this address family.
+//
+// path.Join cannot be used here: it collapses the "//" after the scheme.
+func bootstrapURL(base *url.URL, mac net.HardwareAddr) string {
+	if base == nil || base.Host == "" {
+		return ""
+	}
+
+	return base.JoinPath(mac.String(), bootstrap.ArchiveName).String()
+}
+
 func (h *Handler) serveBootScript(ctx context.Context, w http.ResponseWriter, name string, hw hardware.Info, settings familySettings) {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("smee.script_name", name))
@@ -330,6 +352,7 @@ func (h *Handler) defaultScript(span trace.Span, hw hardware.Info, settings fami
 	if hw.OSIE.Initrd != "" {
 		auto.InitrdName = hw.OSIE.Initrd
 	}
+	auto.BootstrapURL = bootstrapURL(settings.bootstrapBaseURL, mac)
 	if span.SpanContext().IsSampled() {
 		auto.TraceID = span.SpanContext().TraceID().String()
 	}

@@ -33,7 +33,11 @@ type SmeeConfig struct {
 	// DHCPv6IPXEScript splits out some url.URL fields so they can be set individually.
 	// The cmd package is responsible for putting the fields back together into a url.URL for use in service package configs.
 	DHCPv6IPXEScript URLBuilder
-	LogLevel         int
+	// Bootstrap and BootstrapV6 split out some url.URL fields so they can be set individually.
+	// The cmd package is responsible for putting the fields back together into a url.URL for use in service package configs.
+	Bootstrap   URLBuilder
+	BootstrapV6 URLBuilder
+	LogLevel    int
 }
 
 var KubeIndexesSmee = map[kube.IndexType]kube.Index{
@@ -163,6 +167,15 @@ func RegisterSmeeFlags(fs *Set, sc *SmeeConfig) {
 	fs.Register(ISOPatchMagicString, ffval.NewValueDefault(&sc.Config.ISO.PatchMagicString, sc.Config.ISO.PatchMagicString))
 	fs.RegisterFamily(ISOStaticIPAMEnabled, V4, ffval.NewValueDefault(&sc.Config.ISO.StaticIPAMEnabled, sc.Config.ISO.StaticIPAMEnabled))
 
+	// Bootstrap Flags
+	fs.Register(BootstrapEnabled, ffval.NewValueDefault(&sc.Config.Bootstrap.Enabled, sc.Config.Bootstrap.Enabled))
+	fs.RegisterFamily(BootstrapScheme, V4, ffval.NewValueDefault(&sc.Config.Bootstrap.BaseURL.Scheme, sc.Config.Bootstrap.BaseURL.Scheme))
+	fs.RegisterFamily(BootstrapScheme, V6, ffval.NewValueDefault(&sc.Config.Bootstrap.BaseURLV6.Scheme, sc.Config.Bootstrap.BaseURLV6.Scheme))
+	fs.RegisterFamily(BootstrapHost, V4, ffval.NewValueDefault(&sc.Bootstrap.Host, sc.Bootstrap.Host))
+	fs.RegisterFamily(BootstrapHost, V6, ffval.NewValueDefault(&sc.BootstrapV6.Host, sc.BootstrapV6.Host))
+	fs.RegisterFamily(BootstrapPort, V4, ffval.NewValueDefault(&sc.Bootstrap.Port, sc.Bootstrap.Port))
+	fs.RegisterFamily(BootstrapPort, V6, ffval.NewValueDefault(&sc.BootstrapV6.Port, sc.BootstrapV6.Port))
+
 	// Log level
 	fs.Register(SmeeLogLevel, ffval.NewValueDefault(&sc.LogLevel, sc.LogLevel))
 
@@ -200,6 +213,11 @@ func (s *SmeeConfig) Convert(publicIP, publicIPv6 netip.Addr, bindAddr, bindAddr
 	if hasPublicIPv6 || s.DHCPv6IPXEBinary.Host != "" || s.DHCPv6IPXEBinary.Port != 0 {
 		s.Config.DHCPv6.IPXEHTTPBinaryURL.Host = s.advertisedHost(s.DHCPv6IPXEBinary, publicIPv6, defaultPortV6)
 	}
+
+	// Bootstrap archives are served by Smee itself, so the advertised address
+	// is the same one clients already use for iPXE artifacts.
+	s.Config.Bootstrap.BaseURL.Host = bootstrapHost(s.Bootstrap, publicIP, defaultPort)
+	s.Config.Bootstrap.BaseURLV6.Host = bootstrapHost(s.BootstrapV6, publicIPv6, defaultPort)
 
 	// Service-specific bind addresses take precedence over the global bind address.
 	if bindAddr.IsValid() {
@@ -268,6 +286,25 @@ func (s *SmeeConfig) advertisedHost(builder URLBuilder, publicIP netip.Addr, def
 	}
 
 	return joinHostPort(addr, port)
+}
+
+// bootstrapHost is advertisedHost without the empty-address fallback: a family
+// with no address yields "", which omits the extra initrd from that family's
+// boot script rather than advertising a portless address.
+func bootstrapHost(b URLBuilder, publicIP netip.Addr, defaultPort int) string {
+	host := b.Host
+	if host == "" && publicIP.IsValid() && !publicIP.IsUnspecified() {
+		host = publicIP.String()
+	}
+	if host == "" {
+		return ""
+	}
+	port := defaultPort
+	if b.Port != 0 {
+		port = b.Port
+	}
+
+	return joinHostPort(host, strconv.Itoa(port))
 }
 
 func advertisedAddrPort(addrPort string, publicIP netip.Addr) string {
@@ -629,12 +666,34 @@ var ISOStaticIPAMEnabled = Config{
 	Usage: "[iso] enable static IPAM when patching the source (upstream) ISO",
 }
 
+// Bootstrap flags. There is no path flag: the path is the route Smee serves.
+// The ISO delivery path needs no flags of its own either, as it keys off the
+// layout metadata published with the source image.
+var BootstrapEnabled = Config{
+	Name:  "bootstrap-enabled",
+	Usage: "[bootstrap] serve per-host bootstrap data for iPXE clients to load as an additional initrd",
+}
+
+var BootstrapScheme = Config{
+	Name:  "bootstrap-scheme",
+	Usage: "[bootstrap] scheme clients use to fetch bootstrap data",
+}
+
+var BootstrapHost = Config{
+	Name:  "bootstrap-host",
+	Usage: "[bootstrap] host or IP clients use to fetch bootstrap data, defaults to the advertised public IP",
+}
+
+var BootstrapPort = Config{
+	Name:  "bootstrap-port",
+	Usage: "[bootstrap] port clients use to fetch bootstrap data, defaults to the HTTP server port",
+}
+
 // Tink Server flags.
 var TinkServerAddrPort = Config{
 	Name:  "ipxe-script-tink-server-addr-port",
 	Usage: "[ipxe] Tink server address and port",
 }
-
 var TinkServerUseTLS = Config{
 	Name:  "ipxe-script-tink-server-use-tls",
 	Usage: "[ipxe] Use TLS to connect to the Tink server",

@@ -21,6 +21,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/data"
+	"github.com/tinkerbell/tinkerbell/smee/internal/bootstrap"
 	"github.com/tinkerbell/tinkerbell/smee/internal/dhcp"
 	"github.com/tinkerbell/tinkerbell/smee/internal/iso/internal"
 )
@@ -42,6 +43,9 @@ type Handler struct {
 	Backend BackendReader
 	Logger  logr.Logger
 	Patch   Patch
+
+	// layouts resolves the bootstrap slot's location for each source ISO.
+	layouts *bootstrap.Fetcher
 }
 
 // Patch holds the data and configuration used for ISO patching.
@@ -92,6 +96,7 @@ func (h *Handler) HandlerFunc() (http.HandlerFunc, error) {
 	}
 
 	h.Patch.magicStrPadding = bytes.Repeat([]byte{' '}, len(h.Patch.MagicString))
+	h.layouts = &bootstrap.Fetcher{}
 
 	return proxy.ServeHTTP, nil
 }
@@ -142,6 +147,14 @@ func (h *Handler) Copy(ctx context.Context, dst io.Writer, src io.Reader, buf []
 	if len(buf) == 0 {
 		buf = make([]byte, 32*1024)
 	}
+	// The bootstrap slot is patched by absolute ISO offset rather than by
+	// searching each read buffer, so a range request that starts or ends
+	// inside the reserved space is still served the right bytes.
+	overlay := bootstrap.FromContext(ctx)
+	abs := int64(0)
+	if overlay != nil {
+		abs = overlay.Start
+	}
 	var written int64
 	for {
 		nr, rerr := src.Read(buf)
@@ -159,6 +172,10 @@ func (h *Handler) Copy(ctx context.Context, dst io.Writer, src io.Reader, buf []
 				copy(dup[i:], internal.GetPatch(ctx))
 				b = dup
 			}
+			if overlay != nil && overlay.Enabled {
+				overlay.Apply(b, abs)
+			}
+			abs += int64(nr)
 			nw, werr := dst.Write(b)
 			if nw > 0 {
 				written += int64(nw)
@@ -234,7 +251,7 @@ func (h *Handler) roundTripWithRedirectCount(req *http.Request, redirectCount in
 			}, nil
 		}
 
-		fac, hw, err := h.getFacility(req.Context(), ha, h.Backend)
+		fac, hw, spec, err := h.getFacility(req.Context(), ha, h.Backend)
 		if err != nil {
 			log.Info("unable to get the hardware object", "error", err, "mac", ha.String())
 			if apierrors.IsNotFound(err) {
@@ -288,6 +305,22 @@ func (h *Handler) roundTripWithRedirectCount(req *http.Request, redirectCount in
 		req.URL.Path = tu.Path
 		req.URL.Host = tu.Host
 		req.URL.Scheme = tu.Scheme
+
+		overlay, err := h.newOverlay(req.Context(), tu, spec)
+		if err != nil {
+			log.Error(err, "unable to build the bootstrap data slot", "targetURL", tu.String())
+			return &http.Response{
+				Status:     fmt.Sprintf("%d %s", http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError)),
+				StatusCode: http.StatusInternalServerError,
+				Body:       http.NoBody,
+				Request:    req,
+			}, nil
+		}
+		if overlay != nil {
+			req = req.WithContext(bootstrap.WithOverlay(req.Context(), overlay))
+			// Any content transformation would invalidate the ISO byte offsets.
+			req.Header.Set("Accept-Encoding", "identity")
+		}
 	}
 	scheme := schemeHTTP
 	if req.TLS != nil {
@@ -333,6 +366,13 @@ func (h *Handler) roundTripWithRedirectCount(req *http.Request, redirectCount in
 	}
 
 	tu := req.URL.String()
+	if overlay := bootstrap.FromContext(req.Context()); overlay != nil {
+		if err := overlay.PrepareResponse(resp); err != nil {
+			// Falling back to an unpersonalized slot is safer than writing the
+			// archive at an offset we cannot place within the ISO.
+			log.Info("unable to locate the bootstrap slot in the response, serving unpersonalized", "error", err.Error(), "targetURL", tu)
+		}
+	}
 	if resp.StatusCode == http.StatusPartialContent {
 		// 0.002% of the time we log a 206 request message.
 		// In testing, it was observed that about 3000 HTTP 206 requests are made per ISO mount.
@@ -348,6 +388,44 @@ func (h *Handler) roundTripWithRedirectCount(req *http.Request, redirectCount in
 	log.V(1).Info("roundtrip complete")
 
 	return resp, nil
+}
+
+// newOverlay resolves the reserved slot for tu and generates the host's
+// configuration archive. It returns a nil Overlay, and no error, when the
+// source ISO publishes no layout metadata; such an ISO has no slot and is
+// served unmodified rather than patched at a guessed location.
+func (h *Handler) newOverlay(ctx context.Context, tu *url.URL, spec *tinkerbell.Hardware) (*bootstrap.Overlay, error) {
+	if h.layouts == nil {
+		return nil, nil
+	}
+	layout, err := h.layouts.Get(ctx, tu)
+	if err != nil {
+		if errors.Is(err, bootstrap.ErrNoLayout) {
+			h.Logger.V(1).Info("source ISO reserves no bootstrap data slot, serving it unmodified", "sourceISO", tu.String(), "reason", err.Error())
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	files, err := bootstrap.Files(spec)
+	if err != nil {
+		return nil, err
+	}
+	archive, err := bootstrap.Archive(files, bootstrap.ModTime(spec))
+	if err != nil {
+		return nil, err
+	}
+	// Validate capacity before any image bytes are served. Truncating would
+	// produce an archive the kernel cannot parse.
+	if int64(len(archive)) > layout.Slot.Capacity {
+		return nil, fmt.Errorf("bootstrap archive is %d bytes, slot %s capacity is %d", len(archive), layout.Slot.Path, layout.Slot.Capacity)
+	}
+
+	return &bootstrap.Overlay{
+		Offset:   layout.Slot.Offset,
+		Capacity: layout.Slot.Capacity,
+		Archive:  archive,
+	}, nil
 }
 
 func (h *Handler) constructPatch(console, mac string, d *dhcp.DHCP) string {
@@ -379,21 +457,21 @@ func getMAC(urlPath string) (net.HardwareAddr, error) {
 	return hw, nil
 }
 
-func (h *Handler) getFacility(ctx context.Context, mac net.HardwareAddr, br BackendReader) (string, dhcp.Hardware, error) {
+func (h *Handler) getFacility(ctx context.Context, mac net.HardwareAddr, br BackendReader) (string, dhcp.Hardware, *tinkerbell.Hardware, error) {
 	if br == nil {
-		return "", dhcp.Hardware{}, errors.New("backend is nil")
+		return "", dhcp.Hardware{}, nil, errors.New("backend is nil")
 	}
 
 	spec, err := br.FilterHardware(ctx, data.HardwareFilter{ByMACAddress: mac.String()})
 	if err != nil {
-		return "", dhcp.Hardware{}, err
+		return "", dhcp.Hardware{}, nil, err
 	}
 	hw, err := dhcp.ConvertByMac(ctx, mac, spec)
 	if err != nil {
-		return "", dhcp.Hardware{}, fmt.Errorf("failed to convert hardware data: %w", err)
+		return "", dhcp.Hardware{}, nil, fmt.Errorf("failed to convert hardware data: %w", err)
 	}
 
-	return hw.Netboot.Facility, dhcp.Hardware{DHCP: hw.DHCP, Isoboot: hw.Isoboot}, nil
+	return hw.Netboot.Facility, dhcp.Hardware{DHCP: hw.DHCP, Isoboot: hw.Isoboot}, spec, nil
 }
 
 func randomPercentage(precision int64) float64 {

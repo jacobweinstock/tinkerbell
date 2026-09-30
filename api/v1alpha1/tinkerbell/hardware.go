@@ -312,6 +312,30 @@ type HardwareMetadata struct {
 	Instance     *MetadataInstance     `json:"instance,omitempty"`
 	Custom       *MetadataCustom       `json:"custom,omitempty"`
 	Facility     *MetadataFacility     `json:"facility,omitempty"`
+	// OSIEFiles, when defined, is the set of additional files to be made available to the OSIE (Operating System Installation Environment).
+	// +optional
+	OSIEFiles []OSIEFile `json:"osieFiles,omitempty"`
+}
+
+// OSIEFile represents a file to be made available to the OSIE (Operating System Installation Environment).
+// All files are relative to the default /osie-data directory in the OSIE (Operating System Installation Environment).
+type OSIEFile struct {
+	// Path is the file path where the file should be made available within the default /osie-data directory in the OSIE (Operating System Installation Environment).
+	// +required
+	Path string `json:"path"`
+
+	// Contents is the contents of the file.
+	// +optional
+	Contents string `json:"contents"`
+
+	// Mode is the file's permission bits as an octal string, e.g. "0644", "644" or "0o644".
+	// Only permission bits are allowed (max "0777"); setuid, setgid and sticky bits are rejected.
+	// Symbolic forms like "rw-r--r--" and decimal values are invalid.
+	// Empty or "0" means the default, "0400" (read-only for the owner).
+	// +kubebuilder:validation:MaxLength=8
+	// +kubebuilder:validation:Pattern=`^(0[oO])?0*[0-7]{1,3}$`
+	// +optional
+	Mode string `json:"mode,omitempty"`
 }
 
 type MetadataManufacturer struct {
