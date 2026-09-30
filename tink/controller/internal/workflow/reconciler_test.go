@@ -68,7 +68,7 @@ type fakeReferences struct {
 	render func(*v1alpha1.Hardware) (*v1alpha1.Hardware, error)
 }
 
-func (f fakeReferences) ResolveReferences(_ context.Context, _ string, _ *v1alpha1.Hardware) (map[string]any, error) {
+func (f fakeReferences) ResolveReferences(_ context.Context, _ *v1alpha1.Hardware) (map[string]any, error) {
 	return f.refs, f.err
 }
 

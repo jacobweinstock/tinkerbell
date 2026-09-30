@@ -22,7 +22,7 @@ func TestRenderedReader(t *testing.T) {
 	store := newTestStore(hws, res, &fakeInformers{})
 	hw := templated("1")
 	hws.set(hw)
-	r := &RenderedReader{stored: storedHardware{hw}, store: store, consumer: ConsumerSmee}
+	r := &RenderedReader{stored: storedHardware{hw}, store: store}
 
 	_, err := r.FilterHardware(ctx, data.HardwareFilter{})
 	if !apierrors.IsNotFound(err) || !hardwareNotFound(err) {

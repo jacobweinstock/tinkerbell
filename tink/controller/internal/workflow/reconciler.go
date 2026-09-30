@@ -38,12 +38,10 @@ const (
 	// reasonError is the condition Reason set when a workflow step fails.
 	reasonError = "Error"
 
-	// referenceConsumer identifies this controller to the reference policy.
-	referenceConsumer = "tink-controller"
 )
 
 type referenceResolver interface {
-	ResolveReferences(ctx context.Context, consumer string, hw *v1alpha1.Hardware) (map[string]any, error)
+	ResolveReferences(ctx context.Context, hw *v1alpha1.Hardware) (map[string]any, error)
 	RenderHardware(hw *v1alpha1.Hardware, references map[string]any) (*v1alpha1.Hardware, error)
 }
 
@@ -276,7 +274,7 @@ func (r *Reconciler) processWorkflow(ctx context.Context, logger logr.Logger, st
 		)
 	}
 
-	references, refErr := r.references.ResolveReferences(ctx, referenceConsumer, &hardware)
+	references, refErr := r.references.ResolveReferences(ctx, &hardware)
 	rendered, err := r.references.RenderHardware(&hardware, references)
 	if err != nil {
 		journal.Log(ctx, "error rendering hardware")

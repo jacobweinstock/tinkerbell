@@ -9,12 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// Consumers of rendered Hardware, as named in reference rules.
-const (
-	ConsumerSmee    = "smee"
-	ConsumerTootles = "tootles"
-)
-
 // renderWorkers is the number of Hardware rendered concurrently.
 const renderWorkers = 4
 
@@ -27,22 +21,20 @@ func (b *Backend) RenderHardware(hw *tinkerbell.Hardware, references map[string]
 	return renderHardware(hw, references)
 }
 
-// RenderedReader serves Hardware rendered for one consumer. It only reads, so a
-// rendered Hardware can never be written back over its templates.
+// RenderedReader serves Hardware rendered under Hardware-wide reference policy.
+// It only reads, so rendered Hardware cannot be written back over its templates.
 type RenderedReader struct {
-	stored   hardwareFilterer
-	store    *renderStore
-	consumer string
+	stored hardwareFilterer
+	store  *renderStore
 }
 
 type hardwareFilterer interface {
 	FilterHardware(ctx context.Context, opts data.HardwareFilter) (*tinkerbell.Hardware, error)
 }
 
-// RenderedReader returns a reader of Hardware rendered for consumer, which must
-// be ConsumerSmee or ConsumerTootles. It requires Hardware templating.
-func (b *Backend) RenderedReader(consumer string) *RenderedReader {
-	return &RenderedReader{stored: b, store: b.store, consumer: consumer}
+// RenderedReader returns a reader of Hardware rendered under Hardware-wide reference policy.
+func (b *Backend) RenderedReader() *RenderedReader {
+	return &RenderedReader{stored: b, store: b.store}
 }
 
 // FilterHardware is Backend.FilterHardware, returning the rendered Hardware. A
@@ -52,7 +44,7 @@ func (r *RenderedReader) FilterHardware(ctx context.Context, opts data.HardwareF
 	if err != nil {
 		return nil, err
 	}
-	rendered, ok := r.store.rendered(r.consumer, hw)
+	rendered, ok := r.store.rendered(hw)
 	if !ok {
 		return nil, hardwareNotRenderedError{hardwareNotFoundError{name: hw.Name, namespace: hw.Namespace}}
 	}
@@ -75,5 +67,5 @@ func (b *Backend) newRenderStore() *renderStore {
 		return hw, b.cluster.GetClient().Get(ctx, key, hw)
 	}
 	return newRenderStore(b.Logger.WithName("hardware-render"), b.cluster.GetCache(), b.cluster.GetRESTMapper(),
-		get, b.ResolveReferences, ConsumerSmee, ConsumerTootles)
+		get, b.ResolveReferences)
 }

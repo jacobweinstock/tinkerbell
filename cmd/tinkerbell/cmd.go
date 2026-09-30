@@ -400,8 +400,8 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		s.Config.Backend = b
 		h.Config.SetBackendFromFilterer(b)
 		if b.HardwareTemplating {
-			s.Config.Backend = b.RenderedReader(kube.ConsumerSmee)
-			h.Config.SetBackendFromFilterer(b.RenderedReader(kube.ConsumerTootles))
+			s.Config.Backend = b.RenderedReader()
+			h.Config.SetBackendFromFilterer(b.RenderedReader())
 		}
 		ts.Config.SetBackends(b)
 		tc.Config.Client = b.ClientConfig
