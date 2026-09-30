@@ -420,6 +420,12 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		rc.Config.Client = b.ClientConfig
 		hwc.Config.Client = b.ClientConfig
 		hwc.Config.Renders = b
+		// Sharing is only safe when every component watches the same scope; the controllers are cluster-wide.
+		if globals.BackendKubeNamespace == "" {
+			tc.Config.NewCache = b.NewCache
+			rc.Config.NewCache = b.NewCache
+			hwc.Config.NewCache = b.NewCache
+		}
 		ssc.Config.Backend = b
 		if uic.Config.EnableAutoLogin {
 			uic.Config.AutoLoginRestConfig = b.ClientConfig

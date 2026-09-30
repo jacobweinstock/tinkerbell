@@ -30,6 +30,8 @@ type Config struct {
 	LeaderElectionNamespace string
 	ReferenceResolver       referenceResolver
 	MaxConcurrentReconciles int
+	// NewCache, if set, provides the manager's cache instead of a new one.
+	NewCache cache.NewCacheFunc
 }
 
 type referenceResolver interface {
@@ -96,6 +98,7 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	if c.Namespace != "" {
 		options.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{c.Namespace: {}}}
 	}
+	options.NewCache = c.NewCache
 
 	mgr, err := newManager(c.Client, c.ReferenceResolver, options, c.MaxConcurrentReconciles)
 	if err != nil {
