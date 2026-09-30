@@ -82,7 +82,13 @@ spec:
 
 ### Access Control
 
-By default, all access to References is denied. The deny all by default is a security feature to limit what can be accessed as the Tink Controller might have cluster wide access. Tink Controller is responsible for Reference lookups, so the access Tink Controller has is the upper bound for Reference access.
+Reference policy is evaluated by the Kubernetes backend whenever a built-in
+template path resolves `Hardware.spec.references`. With no deny rules
+configured, an implicit deny-all rule is used, so a reference must match an
+allow rule. With explicit deny rules, a reference is denied only when it
+matches a deny rule and does not match an allow rule; an allow match takes
+precedence. Policy does not grant Kubernetes permissions: the Service Account
+must also have RBAC access to read and watch the referenced resource.
 
 ### Events, Rules, and Patterns
 
@@ -108,7 +114,11 @@ Tinkerbell uses the Quamina library for handling both the allow and deny list. Q
 }
 ```
 
-The `source` object refers to the Hardware object where the reference is defined. The `name` field is the name of the Hardware object. The `namespace` field is the namespace of the Hardware object. The `reference` object refers to a single referenced object. The `name` field is the name of the referenced object. The `namespace` field is the namespace of the referenced object. The `group` field is the group of the referenced object. The `version` field is the version of the referenced object. The `resource` field is the resource of the referenced object.
+The `source` object identifies the Hardware that declares the reference. The
+`reference` object identifies one referenced object by namespace, name, group,
+version, and plural resource. Policy is evaluated for this Hardware-reference
+pair and does not vary by which Tinkerbell component later uses the rendered
+data.
 
 The following is an example event.
 

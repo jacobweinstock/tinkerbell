@@ -19,8 +19,6 @@ const denyAllReferences = `{"reference": {"name": [{"wildcard": "*"}]}}`
 // evaluateData is the data structure used for evaluating rules.
 // In Quamina, this is called the "event".
 type evaluationData struct {
-	// Consumer names the component the reference is resolved for, e.g. "tink-controller".
-	Consumer string `json:"consumer,omitempty"`
 	// Source is the Object that contains the references.
 	Source source `json:"source,omitempty"`
 	// Reference is a reference to another Object from the source.
@@ -36,12 +34,11 @@ type source struct {
 }
 
 // ResolveReferences returns the objects hw's spec.references point to, keyed by
-// reference name, for the named consumer. A reference is read only if the
-// allow list matches it or the deny list does not; with no deny list configured,
-// every reference is denied. Denied and unreadable references are omitted from
-// the map and reported in the returned error, and the remaining ones are still
-// returned.
-func (b *Backend) ResolveReferences(ctx context.Context, consumer string, hw *tinkerbell.Hardware) (map[string]any, error) {
+// reference name. A reference is read only if the allow list matches it or the
+// deny list does not; with no deny list configured, every reference is denied.
+// Denied and unreadable references are omitted from the map and reported in the
+// returned error, and the remaining ones are still returned.
+func (b *Backend) ResolveReferences(ctx context.Context, hw *tinkerbell.Hardware) (map[string]any, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	denylist := b.ReferenceDenyListRules
 	if len(denylist) == 0 {
@@ -52,7 +49,6 @@ func (b *Backend) ResolveReferences(ctx context.Context, consumer string, hw *ti
 	var refErr error
 	for refName, rf := range hw.Spec.References {
 		ed := evaluationData{
-			Consumer:  consumer,
 			Source:    source{Name: hw.Name, Namespace: hw.Namespace},
 			Reference: rf,
 		}

@@ -22,7 +22,6 @@ func TestResolveReferences(t *testing.T) {
 
 	tests := map[string]struct {
 		allow, deny []string
-		consumer    string
 		readErr     error
 		want        []string
 		wantErr     bool
@@ -39,16 +38,9 @@ func TestResolveReferences(t *testing.T) {
 			want:    []string{"cm"},
 			wantErr: true,
 		},
-		"rules can match the consumer": {
-			allow:    []string{`{"consumer":["tink-controller"],"reference":{"resource":["configmaps"]}}`},
-			consumer: "tink-controller",
-			want:     []string{"cm"},
-			wantErr:  true,
-		},
-		"rules for another consumer do not match": {
-			allow:    []string{`{"consumer":["smee"]}`},
-			consumer: "tink-controller",
-			wantErr:  true,
+		"consumer-specific rules do not authorize Hardware references": {
+			allow:   []string{`{"consumer":["tink-controller"],"reference":{"resource":["configmaps"]}}`},
+			wantErr: true,
 		},
 		"invalid rule": {
 			allow:   []string{"not a rule"},
@@ -68,7 +60,7 @@ func TestResolveReferences(t *testing.T) {
 				ReferenceAllowListRules: tt.allow,
 				ReferenceDenyListRules:  tt.deny,
 			}
-			got, err := b.ResolveReferences(context.Background(), tt.consumer, hw)
+			got, err := b.ResolveReferences(context.Background(), hw)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -84,11 +76,9 @@ func TestResolveReferences(t *testing.T) {
 	}
 }
 
-// TestDocumentedRulesMatchWithConsumer guards the rule examples in
-// docs/technical/REFERENCES.md, which predate the consumer field.
-func TestDocumentedRulesMatchWithConsumer(t *testing.T) {
+// TestDocumentedRulesMatch guards the rule examples in docs/technical/REFERENCES.md.
+func TestDocumentedRulesMatch(t *testing.T) {
 	ed := evaluationData{
-		Consumer:  "tink-controller",
 		Source:    source{Name: "example1", Namespace: "tink-system"},
 		Reference: tinkerbell.Reference{Namespace: "example", Name: "exampleLVM", Group: "example.org", Version: "v1alpha1", Resource: "lvms"},
 	}
