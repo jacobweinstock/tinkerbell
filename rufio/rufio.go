@@ -22,9 +22,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/tinkerbell/tinkerbell/rufio/internal/controller"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -38,6 +40,8 @@ type Config struct {
 	InventoryRefreshInterval  time.Duration
 	EnableInventoryCollection bool
 	MaxConcurrentReconciles   int
+	// NewCache, if set, provides the manager's cache instead of a new one.
+	NewCache cache.NewCacheFunc
 }
 
 type Option func(*Config)
@@ -121,6 +125,9 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	if c.Namespace != "" {
 		options.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{c.Namespace: {}}}
 	}
+	options.NewCache = c.NewCache
+	// Credentials are read a few at a time, so caching every Secret the service account can list is not worth the memory.
+	options.Client = ctrlclient.Options{Cache: &ctrlclient.CacheOptions{DisableFor: []ctrlclient.Object{&corev1.Secret{}}}}
 
 	mgr, err := controller.NewManager(c.Client, options, c.BMCConnectTimeout, c.PowerCheckInterval, c.InventoryRefreshInterval, c.EnableInventoryCollection, c.MaxConcurrentReconciles)
 	if err != nil {

@@ -30,6 +30,8 @@ type Config struct {
 	LeaderElectionNamespace string
 	HardwareReader          renderedHardwareReader
 	MaxConcurrentReconciles int
+	// NewCache, if set, provides the manager's cache instead of a new one.
+	NewCache cache.NewCacheFunc
 }
 
 type renderedHardwareReader interface {
@@ -95,6 +97,7 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 	if c.Namespace != "" {
 		options.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{c.Namespace: {}}}
 	}
+	options.NewCache = c.NewCache
 
 	mgr, err := newManager(c.Client, c.HardwareReader, options, c.MaxConcurrentReconciles)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -21,6 +22,8 @@ type Config struct {
 	LeaderElectionNamespace string
 	// Renders reports Hardware render outcomes.
 	Renders controller.RenderReporter
+	// NewCache, if set, provides the manager's cache instead of a new one.
+	NewCache cache.NewCacheFunc
 }
 
 // NewConfig returns a Config with defaults.
@@ -49,6 +52,7 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 		// https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/manager#Options
 		Metrics:                server.Options{BindAddress: "0"},
 		HealthProbeBindAddress: "0",
+		NewCache:               c.NewCache,
 	})
 	if err != nil {
 		return err
