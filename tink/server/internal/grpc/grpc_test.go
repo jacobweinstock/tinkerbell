@@ -1058,6 +1058,7 @@ func TestTerminalWorkflowFence(t *testing.T) {
 		tinkerbell.WorkflowStateSuccess,
 		tinkerbell.WorkflowStateFailed,
 		tinkerbell.WorkflowStateTimeout,
+		tinkerbell.WorkflowStateCancelled,
 	}
 	for _, workflowState := range terminalWorkflowStates {
 		t.Run("GetAction "+string(workflowState)+" is rejected without a status write", func(t *testing.T) {
@@ -1235,6 +1236,7 @@ func TestTerminalWorkflowFenceWinsUpdateConflict(t *testing.T) {
 		tinkerbell.WorkflowStateSuccess,
 		tinkerbell.WorkflowStateFailed,
 		tinkerbell.WorkflowStateTimeout,
+		tinkerbell.WorkflowStateCancelled,
 	} {
 		t.Run("completion retry is acknowledged and discarded after "+string(workflowState), func(t *testing.T) {
 			testCompletionRetryAfterTerminalWorkflowUpdateConflict(t, workflowState)

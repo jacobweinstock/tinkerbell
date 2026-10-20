@@ -340,6 +340,16 @@ spec:
                       A HardwareRef must be provided.
                     type: boolean
                 type: object
+              cancelled:
+                description: |-
+                  Cancelled requests that the Workflow stop. Once true it cannot be unset or set to false;
+                  create a new Workflow to run the work again.
+                  No Action starts after the request is observed. An Action already assigned to an Agent
+                  runs until the Agent reports its result. Cancellation does not undo changes made by
+                  earlier Actions, stop BMC operations already issued, or run post-Workflow boot operations.
+                  status.state is CANCELLING while an assigned Action is outstanding and CANCELLED afterwards.
+                  A Workflow that already reached SUCCESS, FAILED, or TIMEOUT keeps that state.
+                type: boolean
               disabled:
                 description: Disabled indicates whether the Workflow will be processed
                   or not.
@@ -356,6 +366,10 @@ spec:
                 description: Name of the Template associated with this workflow.
                 type: string
             type: object
+            x-kubernetes-validations:
+            - message: cancelled cannot be unset or changed from true to false
+              rule: '!has(oldSelf.cancelled) || !oldSelf.cancelled || (has(self.cancelled)
+                && self.cancelled)'
           status:
             description: WorkflowStatus defines the observed state of a Workflow.
             properties:
@@ -401,6 +415,21 @@ spec:
                     description: Jobs holds the state of any job.bmc.tinkerbell.org
                       objects created.
                     type: object
+                type: object
+              cancellation:
+                description: Cancellation records when a cancellation request was
+                  observed and completed.
+                properties:
+                  completedAt:
+                    description: CompletedAt is when the Workflow entered the CANCELLED
+                      state.
+                    format: date-time
+                    type: string
+                  requestedAt:
+                    description: RequestedAt is when Tinkerbell first observed spec.cancelled,
+                      not when it was set.
+                    format: date-time
+                    type: string
                 type: object
               conditions:
                 description: Conditions are the latest available observations of an

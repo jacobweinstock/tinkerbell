@@ -10,6 +10,7 @@ import (
 	"github.com/go-logr/logr"
 	v1alpha1 "github.com/tinkerbell/tinkerbell/api/v1alpha1/tinkerbell"
 	"github.com/tinkerbell/tinkerbell/pkg/journal"
+	"github.com/tinkerbell/tinkerbell/tink/internal/cancellation"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -111,6 +112,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	wflow := stored.DeepCopy()
 
+	// Cancellation is checked before the state switch so that a cancelled Workflow is not
+	// rendered, prepared, advanced to its next Task, timed out, or post-processed.
+	if cancellation.Apply(wflow, r.nowFunc()) {
+		journal.Log(ctx, "cancellation requested", "state", wflow.Status.State)
+		return reconcile.Result{}, mergePatchStatus(ctx, r.client, stored, wflow)
+	}
+
 	switch wflow.Status.State {
 	case "":
 		journal.Log(ctx, "new workflow")
@@ -178,7 +186,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		rc, err := s.postActions(ctx)
 
 		return rc, errors.Join(err, mergePatchStatus(ctx, r.client, stored, wflow))
-	case v1alpha1.WorkflowStatePending, v1alpha1.WorkflowStateTimeout, v1alpha1.WorkflowStateFailed, v1alpha1.WorkflowStateSuccess:
+	case v1alpha1.WorkflowStatePending, v1alpha1.WorkflowStateTimeout, v1alpha1.WorkflowStateFailed, v1alpha1.WorkflowStateSuccess,
+		v1alpha1.WorkflowStateCancelling, v1alpha1.WorkflowStateCancelled:
 		journal.Log(ctx, "controller will not trigger another reconcile", "state", wflow.Status.State)
 
 		return reconcile.Result{}, nil

@@ -21,6 +21,13 @@ const (
 	WorkflowStateSuccess   = WorkflowState("SUCCESS")
 	WorkflowStateFailed    = WorkflowState("FAILED")
 	WorkflowStateTimeout   = WorkflowState("TIMEOUT")
+	// WorkflowStateCancelling means cancellation was requested and no further Actions will start,
+	// but an Action that was already assigned to an Agent has not reported a result yet.
+	WorkflowStateCancelling = WorkflowState("CANCELLING")
+	// WorkflowStateCancelled is the terminal state of a cancelled Workflow. No Agent has an
+	// outstanding Action for the Workflow. It does not mean changes made by earlier Actions or
+	// BMC operations were undone.
+	WorkflowStateCancelled = WorkflowState("CANCELLED")
 
 	BootJobFailed           WorkflowConditionType = "BootJobFailed"
 	BootJobComplete         WorkflowConditionType = "BootJobComplete"
@@ -30,6 +37,21 @@ const (
 	ToggleAllowNetbootTrue  WorkflowConditionType = "AllowNetbootTrue"
 	ToggleAllowNetbootFalse WorkflowConditionType = "AllowNetbootFalse"
 	TemplateRenderedSuccess WorkflowConditionType = "TemplateRenderedSuccess"
+	// Cancellation reports the progress of a cancellation request. It is False while the
+	// Workflow is CANCELLING and True once it is CANCELLED.
+	Cancellation WorkflowConditionType = "Cancellation"
+
+	// CancellationReasonLegacyAgent means the Workflow is waiting for an Agent to report the
+	// result of an Action it was assigned before cancellation. The Agent cannot stop the Action
+	// while it runs.
+	CancellationReasonLegacyAgent = "LegacyAgent"
+	// CancellationReasonNoOutstandingAction means no Action was assigned to an Agent when
+	// cancellation was applied.
+	CancellationReasonNoOutstandingAction = "NoOutstandingAction"
+	// CancellationReasonLegacyActionFinished means the Agent reported the result of the Action
+	// it was running when cancellation was requested. The Agent did not confirm that the
+	// Action's runtime resources were stopped.
+	CancellationReasonLegacyActionFinished = "LegacyActionFinished"
 
 	TemplateRenderingSuccessful TemplateRendering = "successful"
 	TemplateRenderingFailed     TemplateRendering = "failed"
@@ -71,10 +93,21 @@ type WorkflowList struct {
 }
 
 // WorkflowSpec defines the desired state of Workflow.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.cancelled) || !oldSelf.cancelled || (has(self.cancelled) && self.cancelled)",message="cancelled cannot be unset or changed from true to false"
 type WorkflowSpec struct {
 	// Disabled indicates whether the Workflow will be processed or not.
 	// +optional
 	Disabled *bool `json:"disabled,omitempty"`
+
+	// Cancelled requests that the Workflow stop. Once true it cannot be unset or set to false;
+	// create a new Workflow to run the work again.
+	// No Action starts after the request is observed. An Action already assigned to an Agent
+	// runs until the Agent reports its result. Cancellation does not undo changes made by
+	// earlier Actions, stop BMC operations already issued, or run post-Workflow boot operations.
+	// status.state is CANCELLING while an assigned Action is outstanding and CANCELLED afterwards.
+	// A Workflow that already reached SUCCESS, FAILED, or TIMEOUT keeps that state.
+	// +optional
+	Cancelled *bool `json:"cancelled,omitempty"`
 	// Name of the Template associated with this workflow.
 	TemplateRef string `json:"templateRef,omitempty"`
 
@@ -183,6 +216,10 @@ type WorkflowStatus struct {
 	// CurrentState tracks where the workflow is in its execution.
 	CurrentState *CurrentState `json:"currentState,omitempty"`
 
+	// Cancellation records when a cancellation request was observed and completed.
+	// +optional
+	Cancellation *CancellationStatus `json:"cancellation,omitempty"`
+
 	// Tasks are the tasks to be run by the Agent(s).
 	Tasks []Task `json:"tasks,omitempty"`
 
@@ -193,6 +230,17 @@ type WorkflowStatus struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Conditions []WorkflowCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+}
+
+// CancellationStatus records the progress of a Workflow cancellation request.
+type CancellationStatus struct {
+	// RequestedAt is when Tinkerbell first observed spec.cancelled, not when it was set.
+	// +optional
+	RequestedAt *metav1.Time `json:"requestedAt,omitempty"`
+
+	// CompletedAt is when the Workflow entered the CANCELLED state.
+	// +optional
+	CompletedAt *metav1.Time `json:"completedAt,omitempty"`
 }
 
 // JobStatus holds the state of a specific job.bmc.tinkerbell.org object created.

@@ -16,6 +16,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/pkg/data"
 	"github.com/tinkerbell/tinkerbell/pkg/journal"
 	"github.com/tinkerbell/tinkerbell/pkg/proto"
+	"github.com/tinkerbell/tinkerbell/tink/internal/cancellation"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -177,44 +178,9 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 	}
 
 	journal.Log(ctx, "found Workflows", "workflows", len(wfs))
-	var wf tinkerbell.Workflow
-	// Scan every Workflow for this agent instead of returning on the first
-	// ineligible one. Terminal Workflows keep their Status.AgentID and so remain
-	// in the agent-ID index indefinitely; returning early would let one of them
-	// permanently shadow a later pending/running Workflow assigned to the same
-	// agent, so its Action would never be served.
-	var found, preparing, notRunning bool
-	for _, w := range wfs {
-		if len(w.Status.Tasks) == 0 {
-			continue
-		}
-		// Don't serve Actions when in a tinkerbell.WorkflowStatePreparing state.
-		// This is to prevent the Agent from starting Actions before Workflow boot options are performed.
-		if w.Spec.BootOptions.BootMode != "" && w.Status.State == tinkerbell.WorkflowStatePreparing {
-			journal.Log(ctx, "Workflow is in preparing state")
-			preparing = true
-			continue
-		}
-		if w.Status.State != tinkerbell.WorkflowStatePending && w.Status.State != tinkerbell.WorkflowStateRunning {
-			journal.Log(ctx, "Workflow not in pending or running state")
-			notRunning = true
-			continue
-		}
-		wf = w
-		found = true
-		journal.Log(ctx, "found Workflow", "workflow", wf.Name)
-		break
-	}
-	if !found {
-		switch {
-		case preparing:
-			return nil, status.Error(codes.FailedPrecondition, "Workflow is in preparing state")
-		case notRunning:
-			return nil, status.Error(codes.FailedPrecondition, "Workflow not in pending or running state")
-		default:
-			journal.Log(ctx, "no Tasks found in Workflow")
-			return nil, status.Error(codes.NotFound, "no Tasks found in Workflow")
-		}
+	wf, err := selectWorkflow(ctx, wfs, req.GetAgentId())
+	if err != nil {
+		return nil, err
 	}
 
 	var task *tinkerbell.Task
@@ -274,6 +240,8 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 		TaskName:   task.Name,
 	}
 
+	// The update is conditional on the resourceVersion that was read, so a cancellation request
+	// committed after the read makes it fail with a conflict instead of assigning the Action.
 	if err := h.Backend.UpdateWorkflow(ctx, &wf, data.UpdateOptions{StatusOnly: true}); err != nil {
 		if apierrors.IsConflict(err) {
 			return nil, status.Errorf(codes.Aborted, "error writing current state: %v", err)
@@ -322,6 +290,67 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 	log.Info("sending action", "action", ar, "actionID", action.ID)
 	journal.Log(ctx, "sending Action", "action", ar)
 	return ar, nil
+}
+
+// selectWorkflow returns the first of wfs whose Actions can be served to agentID, or a gRPC
+// status error that tells the Agent why none can be.
+// No Action is served while a cancelled Workflow waits for this Agent to report an Action:
+// the Agent may have abandoned that Action without stopping it.
+func selectWorkflow(ctx context.Context, wfs []tinkerbell.Workflow, agentID string) (tinkerbell.Workflow, error) {
+	// Every Workflow is checked, even after one is found. Terminal Workflows keep their
+	// Status.AgentID and so remain in the agent-ID index indefinitely, and an earlier
+	// cancelled Workflow can block the Agent regardless of list order.
+	var wf tinkerbell.Workflow
+	var found, preparing, notRunning, cancelled, cancelPending bool
+	for _, w := range wfs {
+		if len(w.Status.Tasks) == 0 {
+			continue
+		}
+		if cancellation.Requested(&w) {
+			if a := cancellation.Outstanding(&w); a != nil && a.AgentID == agentID && !cancellation.IsFinal(w.Status.State) {
+				journal.Log(ctx, "cancelled Workflow has an unreported Action for this Agent", "workflow", w.Name, "actionID", a.ActionID)
+				cancelPending = true
+				continue
+			}
+			journal.Log(ctx, "Workflow is cancelled", "workflow", w.Name)
+			cancelled = true
+			continue
+		}
+		if found {
+			continue
+		}
+		// Don't serve Actions when in a tinkerbell.WorkflowStatePreparing state.
+		// This is to prevent the Agent from starting Actions before Workflow boot options are performed.
+		if w.Spec.BootOptions.BootMode != "" && w.Status.State == tinkerbell.WorkflowStatePreparing {
+			journal.Log(ctx, "Workflow is in preparing state")
+			preparing = true
+			continue
+		}
+		if w.Status.State != tinkerbell.WorkflowStatePending && w.Status.State != tinkerbell.WorkflowStateRunning {
+			journal.Log(ctx, "Workflow not in pending or running state")
+			notRunning = true
+			continue
+		}
+		wf = w
+		found = true
+		journal.Log(ctx, "found Workflow", "workflow", wf.Name)
+	}
+
+	switch {
+	case cancelPending:
+		return wf, status.Error(codes.FailedPrecondition, "a cancelled Workflow is waiting for this Agent to report the result of an Action")
+	case found:
+		return wf, nil
+	case preparing:
+		return wf, status.Error(codes.FailedPrecondition, "Workflow is in preparing state")
+	case notRunning:
+		return wf, status.Error(codes.FailedPrecondition, "Workflow not in pending or running state")
+	case cancelled:
+		return wf, status.Error(codes.FailedPrecondition, "Workflow is cancelled")
+	default:
+		journal.Log(ctx, "no Tasks found in Workflow")
+		return wf, status.Error(codes.NotFound, "no Tasks found in Workflow")
+	}
 }
 
 // resolveAction determines which action to serve for the given task based on the workflow's current state.
@@ -397,7 +426,8 @@ func isAgentTerminalWorkflowState(state tinkerbell.WorkflowState) bool {
 	case tinkerbell.WorkflowStatePost,
 		tinkerbell.WorkflowStateSuccess,
 		tinkerbell.WorkflowStateFailed,
-		tinkerbell.WorkflowStateTimeout:
+		tinkerbell.WorkflowStateTimeout,
+		tinkerbell.WorkflowStateCancelled:
 		return true
 	default:
 		return false
@@ -438,11 +468,11 @@ func (h *Handler) ReportActionStatus(ctx context.Context, req *proto.ActionStatu
 					}
 				}
 
-				wf.Status.Tasks[ti].Actions[ai].State = tinkerbell.WorkflowState(req.GetActionState().String())
-				wf.Status.Tasks[ti].Actions[ai].ExecutionStart = &metav1.Time{Time: req.GetExecutionStart().AsTime()}
-				wf.Status.Tasks[ti].Actions[ai].ExecutionStop = &metav1.Time{Time: req.GetExecutionStop().AsTime()}
-				wf.Status.Tasks[ti].Actions[ai].ExecutionDuration = req.GetExecutionDuration()
-				wf.Status.Tasks[ti].Actions[ai].Message = req.GetMessage().GetMessage()
+				if cancellation.Requested(wf) || wf.Status.State == tinkerbell.WorkflowStateCancelling {
+					return h.reportCancelling(ctx, wf, ti, ai, req)
+				}
+
+				recordActionReport(&wf.Status.Tasks[ti].Actions[ai], req)
 
 				// 4. Write the updated workflow
 				if req.GetActionState() != proto.ActionStatusRequest_SUCCESS {
@@ -475,6 +505,60 @@ func (h *Handler) ReportActionStatus(ctx context.Context, req *proto.ActionStatu
 	}
 
 	return nil, status.Error(codes.NotFound, "action not found")
+}
+
+// reportCancelling records a report for the Action at wf.Status.Tasks[ti].Actions[ai] of a
+// Workflow whose cancellation was requested. Only the outstanding Action is accepted. A
+// RUNNING report keeps the Workflow CANCELLING; a result completes the cancellation. Neither
+// assigns another Action.
+func (h *Handler) reportCancelling(ctx context.Context, wf *tinkerbell.Workflow, ti, ai int, req *proto.ActionStatusRequest) (*proto.ActionStatusResponse, error) {
+	a := cancellation.Outstanding(wf)
+	if a == nil || a.AgentID != req.GetAgentId() || a.TaskID != req.GetTaskId() || a.ActionID != req.GetActionId() {
+		journal.Log(ctx, "report for an Action that is not outstanding in a cancelled Workflow")
+		return nil, status.Error(codes.FailedPrecondition, "Workflow is cancelled and this Action is not its outstanding Action")
+	}
+
+	now := h.now()
+	switch req.GetActionState() {
+	case proto.ActionStatusRequest_RUNNING:
+		// An Agent that received the Action before cancellation runs it regardless of this
+		// answer, so accepting the report keeps the Action's record accurate.
+		recordActionReport(&wf.Status.Tasks[ti].Actions[ai], req)
+		a.State = tinkerbell.WorkflowStateRunning
+		cancellation.Apply(wf, now)
+	case proto.ActionStatusRequest_SUCCESS, proto.ActionStatusRequest_FAILED, proto.ActionStatusRequest_TIMEOUT:
+		recordActionReport(&wf.Status.Tasks[ti].Actions[ai], req)
+		a.State = wf.Status.Tasks[ti].Actions[ai].State
+		cancellation.Complete(wf, now)
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "invalid Action state %s", req.GetActionState())
+	}
+	journal.Log(ctx, "recorded report for a cancelled Workflow", "actionState", req.GetActionState().String(), "workflowState", wf.Status.State)
+
+	if err := h.Backend.UpdateWorkflow(ctx, wf, data.UpdateOptions{StatusOnly: true}); err != nil {
+		code := codes.Internal
+		if apierrors.IsConflict(err) {
+			code = codes.Aborted
+		}
+		return nil, status.Errorf(code, "error writing report status: %v", err)
+	}
+	return &proto.ActionStatusResponse{}, nil
+}
+
+// recordActionReport copies the state, timing, and message of an Agent's report into action.
+func recordActionReport(action *tinkerbell.Action, req *proto.ActionStatusRequest) {
+	action.State = tinkerbell.WorkflowState(req.GetActionState().String())
+	action.ExecutionStart = &metav1.Time{Time: req.GetExecutionStart().AsTime()}
+	action.ExecutionStop = &metav1.Time{Time: req.GetExecutionStop().AsTime()}
+	action.ExecutionDuration = req.GetExecutionDuration()
+	action.Message = req.GetMessage().GetMessage()
+}
+
+func (h *Handler) now() time.Time {
+	if h.NowFunc == nil {
+		return time.Now()
+	}
+	return h.NowFunc()
 }
 
 // resolveAndAnnotateHardware resolves the Hardware object for a Workflow and persists agent attributes

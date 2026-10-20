@@ -883,7 +883,7 @@ func StatusBadge(status string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else if status == "Provisioning" || status == "RUNNING" || status == "Running" || status == "Pending" || status == "Warning" {
+		} else if status == "Provisioning" || status == "RUNNING" || status == "Running" || status == "Pending" || status == "Warning" || status == "CANCELLING" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<span class=\"inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-tink-yellow-100 text-tink-yellow-800 dark:bg-tink-yellow-700 dark:text-tink-yellow-100\"><svg class=\"w-3 h-3 mr-1.5 animate-pulse\" fill=\"currentColor\" viewBox=\"0 0 8 8\"><circle cx=\"4\" cy=\"4\" r=\"3\"></circle></svg> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
