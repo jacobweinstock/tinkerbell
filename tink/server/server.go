@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -14,6 +15,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/pkg/listener"
 	"github.com/tinkerbell/tinkerbell/pkg/proto"
 	grpcinternal "github.com/tinkerbell/tinkerbell/tink/server/internal/grpc"
+	"github.com/tinkerbell/tinkerbell/tink/server/tunnel"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -31,7 +33,7 @@ var Registry = prometheus.NewRegistry()
 var grpcServerMetrics = grpcprometheus.NewServerMetrics()
 
 func init() {
-	Registry.MustRegister(grpcServerMetrics)
+	Registry.MustRegister(grpcServerMetrics, grpcinternal.AuthenticationFailures, tunnel.AuthorizationDenials)
 }
 
 type Config struct {
@@ -42,6 +44,9 @@ type Config struct {
 	Logger logr.Logger
 	Auto   AutoCapabilities
 	TLS    TLS
+	// Tunnel, when set, serves the Agent services inside WireGuard tunnels and
+	// enforces its mode on the plain listener.
+	Tunnel *tunnel.Manager
 }
 
 type AutoCapabilities struct {
@@ -141,50 +146,87 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 		},
 	}
 
-	params := []grpc.ServerOption{
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.UnaryInterceptor(grpcServerMetrics.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(grpcServerMetrics.StreamServerInterceptor()),
-	}
-	if c.TLS.Cert != nil {
-		params = append(params, grpc.Creds(c.TLS.Cert))
+	if c.Tunnel != nil {
+		s.Tunnel = c.Tunnel
 	}
 
-	// register servers
-	gs := grpc.NewServer(params...)
-	proto.RegisterWorkflowServiceServer(gs, s)
-	reflection.Register(gs)
-	grpcServerMetrics.InitializeMetrics(gs)
-
-	var listeners []net.Listener
-	for _, b := range []listener.Bind{c.V4, c.V6} {
-		if !b.Enabled {
-			continue
-		}
-		if b.Port == 0 {
-			for _, l := range listeners {
-				_ = l.Close()
-			}
-			return fmt.Errorf("tink server %s is enabled but has no bind port", b.Addr)
-		}
-		lis, err := listener.TCP(ctx, b.Addr, int(b.Port))
-		if err != nil {
-			for _, l := range listeners {
-				_ = l.Close()
-			}
-			return fmt.Errorf("failed to listen: %w", err)
-		}
-		listeners = append(listeners, lis)
+	type served struct {
+		gs  *grpc.Server
+		lis net.Listener
 	}
-	if len(listeners) == 0 {
-		return errors.New("tink server has no enabled IPv4 or IPv6 listener")
+	var servers []*grpc.Server
+	var all []served
+	closeAll := func() {
+		for _, sv := range all {
+			_ = sv.lis.Close()
+		}
+	}
+
+	serveTunnel := c.Tunnel != nil
+	servePlain := c.Tunnel == nil || c.Tunnel.Mode() != tunnel.ModeRequired
+
+	if servePlain {
+		params := []grpc.ServerOption{
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		}
+		unary := []grpc.UnaryServerInterceptor{grpcServerMetrics.UnaryServerInterceptor()}
+		if c.Tunnel != nil {
+			unary = append(unary, c.Tunnel.UnaryInterceptor(s.PlainGuard))
+		}
+		params = append(params, grpc.ChainUnaryInterceptor(unary...), grpc.StreamInterceptor(grpcServerMetrics.StreamServerInterceptor()))
+		if c.TLS.Cert != nil {
+			params = append(params, grpc.Creds(c.TLS.Cert))
+		}
+		gs := grpc.NewServer(params...)
+		proto.RegisterWorkflowServiceServer(gs, s)
+		reflection.Register(gs)
+		grpcServerMetrics.InitializeMetrics(gs)
+		servers = append(servers, gs)
+
+		for _, b := range []listener.Bind{c.V4, c.V6} {
+			if !b.Enabled {
+				continue
+			}
+			if b.Port == 0 {
+				closeAll()
+				return fmt.Errorf("tink server %s is enabled but has no bind port", b.Addr)
+			}
+			lis, err := listener.TCP(ctx, b.Addr, int(b.Port))
+			if err != nil {
+				closeAll()
+				return fmt.Errorf("failed to listen: %w", err)
+			}
+			all = append(all, served{gs: gs, lis: lis})
+		}
+		if len(all) == 0 && !serveTunnel {
+			return errors.New("tink server has no enabled IPv4 or IPv6 listener")
+		}
+	} else {
+		log.Info("WireGuard is required, not serving the plain gRPC listener")
+	}
+
+	if serveTunnel {
+		// No TLS inside the tunnels: WireGuard already authenticates and encrypts.
+		gs := grpc.NewServer(
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+			grpc.ChainUnaryInterceptor(grpcServerMetrics.UnaryServerInterceptor(), c.Tunnel.UnaryInterceptor(nil)),
+			grpc.ChainStreamInterceptor(grpcServerMetrics.StreamServerInterceptor(), c.Tunnel.StreamInterceptor()),
+		)
+		proto.RegisterWorkflowServiceServer(gs, s)
+		proto.RegisterAgentServiceServer(gs, grpcinternal.NewAgentService(s))
+		grpcServerMetrics.InitializeMetrics(gs)
+		servers = append(servers, gs)
+		for _, lis := range c.Tunnel.Listeners() {
+			all = append(all, served{gs: gs, lis: lis})
+		}
 	}
 
 	// Bounded by done so a Serve failure cannot leave this parked until the
 	// caller's context happens to end.
 	done := make(chan struct{})
-	defer close(done)
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		select {
 		case <-ctx.Done():
 		case <-done:
@@ -192,30 +234,50 @@ func (c *Config) Start(ctx context.Context, log logr.Logger) error {
 		}
 		time.Sleep(1 * time.Second)
 		log.Info("Initiating graceful shutdown")
-		timer := time.AfterFunc(5*time.Second, func() {
-			log.Info("Server couldn't stop gracefully in time, doing force stop")
-			gs.Stop()
-		})
-		defer timer.Stop()
-		gs.GracefulStop() // gracefully stop server after in-flight server streaming rpc finishes
+		var wg sync.WaitGroup
+		for _, gs := range servers {
+			wg.Go(func() {
+				timer := time.AfterFunc(5*time.Second, func() {
+					log.Info("Server couldn't stop gracefully in time, doing force stop")
+					gs.Stop()
+				})
+				defer timer.Stop()
+				gs.GracefulStop() // gracefully stop server after in-flight server streaming rpc finishes
+			})
+		}
+		wg.Wait()
 		log.Info("Server stopped")
 	}()
 
 	// A graceful shutdown closes every listener, so each Serve returns nil and
-	// g.Wait reports success. A Serve that fails on its own stops the shared
-	// server, otherwise the other family keeps serving and g.Wait never returns.
+	// g.Wait reports success. A Serve that fails on its own stops every server,
+	// otherwise the others keep serving and g.Wait never returns.
 	var g errgroup.Group
-	for _, lis := range listeners {
-		log.Info("starting gRPC server", "bindAddr", lis.Addr().String())
+	for _, sv := range all {
+		if t, ok := sv.lis.(interface{ Tunnel() string }); ok {
+			log.Info("starting gRPC server in WireGuard tunnel", "tunnel", t.Tunnel(), "address", sv.lis.Addr().String())
+		} else {
+			log.Info("starting gRPC server", "bindAddr", sv.lis.Addr().String())
+		}
 		g.Go(func() error {
-			if err := gs.Serve(lis); err != nil {
-				gs.Stop()
+			if err := sv.gs.Serve(sv.lis); err != nil {
+				for _, gs := range servers {
+					gs.Stop()
+				}
 				return err
 			}
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
+	err := g.Wait()
+	close(done)
+	// The tunnels carry the gRPC servers' connections, so they close only once a
+	// graceful stop has let in-flight requests finish.
+	<-stopped
+	if c.Tunnel != nil {
+		c.Tunnel.Close()
+	}
+	if err != nil {
 		log.Error(err, "failed to serve")
 		return err
 	}

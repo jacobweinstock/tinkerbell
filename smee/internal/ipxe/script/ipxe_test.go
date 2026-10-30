@@ -82,8 +82,8 @@ set retry_delay:int32 3
 
 set idx:int32 0
 :retry_kernel
-kernel ${download-url}/${kernel} vlan_id=1234 \
-facility=onprem syslog_host= grpc_authority=127.0.0.1:42113 tinkerbell_tls=false tinkerbell_insecure_tls=false worker_id=00:01:02:03:04:05 hw_addr=00:01:02:03:04:05 \
+kernel ${download-url}/${kernel} \
+facility=onprem syslog_host= tinkerbell_grpc_server=127.0.0.1:42113 tinkerbell_grpc_tls=false tinkerbell_grpc_insecure_tls=false tinkerbell_id=00:01:02:03:04:05 \
 modules=loop,squashfs,sd-mod,usb-storage intel_iommu=on iommu=pt initrd=${initrd} console=tty0 console=ttyS1,115200 && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 
 :download_initrd
@@ -125,8 +125,8 @@ set retry_delay:int32 3
 
 set idx:int32 0
 :retry_kernel
-kernel ${download-url}/${kernel} vlan_id=1234 \
-facility=onprem syslog_host= grpc_authority=127.0.0.1:42113 tinkerbell_tls=false tinkerbell_insecure_tls=false worker_id=worker1 hw_addr=00:01:02:03:04:05 \
+kernel ${download-url}/${kernel} \
+facility=onprem syslog_host= tinkerbell_grpc_server=127.0.0.1:42113 tinkerbell_grpc_tls=false tinkerbell_grpc_insecure_tls=false tinkerbell_id=worker1 \
 modules=loop,squashfs,sd-mod,usb-storage intel_iommu=on iommu=pt initrd=${initrd} console=tty0 console=ttyS1,115200 && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 
 :download_initrd
@@ -343,20 +343,20 @@ set download-url http://127.0.0.1
 set retries:int32 0
 set retry_delay:int32 0
 
-set worker_id ${mac}
-set grpc_authority 127.0.0.1:42113
+set tinkerbell_id ${mac}
+set tinkerbell_grpc_server 127.0.0.1:42113
 set syslog_host 127.1.1.1
-set tinkerbell_tls false
+set tinkerbell_grpc_tls false
 
-echo worker_id=${mac}
-echo grpc_authority=127.0.0.1:42113
+echo tinkerbell_id=${mac}
+echo tinkerbell_grpc_server=127.0.0.1:42113
 echo syslog_host=127.1.1.1
-echo tinkerbell_tls=false
+echo tinkerbell_grpc_tls=false
 
 set idx:int32 0
 :retry_kernel
 kernel ${download-url}/${kernel} \
-syslog_host=${syslog_host} grpc_authority=${grpc_authority} tinkerbell_tls=${tinkerbell_tls} worker_id=${worker_id} hw_addr=${mac} \
+syslog_host=${syslog_host} tinkerbell_grpc_server=${tinkerbell_grpc_server} tinkerbell_grpc_tls=${tinkerbell_grpc_tls} tinkerbell_id=${tinkerbell_id} \
 console=tty1 console=tty2 console=ttyAMA0,115200 console=ttyAMA1,115200 console=ttyS0,115200 console=ttyS1,115200 \
 intel_iommu=on iommu=pt k=v k2=v2 initrd=${initrd} && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 
@@ -482,9 +482,9 @@ func TestHandlerServesIPv6SettingsForAuto6ScriptRoute(t *testing.T) {
 	for _, want := range []string{
 		"set download-url http://[2001:db8::2]",
 		"set syslog-address:ipv6 2001:db8::3",
-		"grpc_authority=[2001:db8::4]:42113",
-		"tinkerbell_tls=true",
-		"tinkerbell_insecure_tls=true",
+		"tinkerbell_grpc_server=[2001:db8::4]:42113",
+		"tinkerbell_grpc_tls=true",
+		"tinkerbell_grpc_insecure_tls=true",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected IPv6 setting %q in script, got:\n%s", want, body)
@@ -493,7 +493,7 @@ func TestHandlerServesIPv6SettingsForAuto6ScriptRoute(t *testing.T) {
 	for _, notWant := range []string{
 		"set download-url http://192.0.2.2",
 		"set syslog-address:ipv4 192.0.2.3",
-		"grpc_authority=192.0.2.4:42113",
+		"tinkerbell_grpc_server=192.0.2.4:42113",
 	} {
 		if strings.Contains(body, notWant) {
 			t.Fatalf("unexpected IPv4 setting %q in script, got:\n%s", notWant, body)

@@ -84,6 +84,14 @@ spec:
     protocol: {{ .Values.service.ports.grpc.protocol }}
     name: {{ .Values.service.ports.grpc.name }}
   {{- end}}
+  {{- if and .Values.deployment.envs.globals.enableTinkServer (ne .Values.deployment.envs.wireguard.mode "disabled") }}
+  {{- range $i, $port := include "tinkerbell.wireguardPorts" . | fromJsonArray }}
+  - port: {{ $port.port }}
+    targetPort: {{ $port.name }}
+    protocol: UDP
+    name: {{ $port.name }}
+  {{- end }}
+  {{- end }}
   {{- if .Values.deployment.envs.globals.enableSecondstar}}
   - port: {{ .Values.service.ports.ssh.port }}
     targetPort: {{ .Values.service.ports.ssh.name }}

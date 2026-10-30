@@ -2,6 +2,8 @@ package script
 
 // StaticScript is the iPXE script used when in the auto-proxy mode.
 // It is built to be generic enough for all hardware to use.
+// Like [HookScript], it writes the Tink Agent values as tinkerbell_<flag>
+// parameters.
 var StaticScript = `#!ipxe
 ` + syslogScript + `echo Loading the static Tinkerbell iPXE script...
 
@@ -19,20 +21,20 @@ set download-url {{ .DownloadURL }}
 set retries:int32 {{ .Retries }}
 set retry_delay:int32 {{ .RetryDelay }}
 
-set worker_id ${mac}
-set grpc_authority {{ .TinkGRPCAuthority }}
+set tinkerbell_id ${mac}
+set tinkerbell_grpc_server {{ .TinkGRPCAuthority }}
 set syslog_host {{ .SelectedSyslogHost }}
-set tinkerbell_tls {{ .TinkerbellTLS }}
+set tinkerbell_grpc_tls {{ .TinkerbellTLS }}
 
-echo worker_id=${mac}
-echo grpc_authority={{ .TinkGRPCAuthority }}
+echo tinkerbell_id=${mac}
+echo tinkerbell_grpc_server={{ .TinkGRPCAuthority }}
 echo syslog_host={{ .SelectedSyslogHost }}
-echo tinkerbell_tls={{ .TinkerbellTLS }}
+echo tinkerbell_grpc_tls={{ .TinkerbellTLS }}
 
 set idx:int32 0
 :retry_kernel
 kernel ${download-url}/${kernel} \
-syslog_host=${syslog_host} grpc_authority=${grpc_authority} tinkerbell_tls=${tinkerbell_tls} worker_id=${worker_id} hw_addr=${mac} \
+syslog_host=${syslog_host} tinkerbell_grpc_server=${tinkerbell_grpc_server} tinkerbell_grpc_tls=${tinkerbell_grpc_tls} tinkerbell_id=${tinkerbell_id} \
 console=tty1 console=tty2 console=ttyAMA0,115200 console=ttyAMA1,115200 console=ttyS0,115200 console=ttyS1,115200 \
 intel_iommu=on iommu=pt {{- range .ExtraKernelParams}} {{.}} {{- end}} initrd=${initrd} && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 

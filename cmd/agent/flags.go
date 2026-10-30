@@ -30,7 +30,9 @@ func RegisterFlagsLegacy(c *config, fs *flag.FlagSet) {
 
 // SetFromEnvLegacy gets any legacy cli flags from the environment and sets them in the config.
 func SetFromEnvLegacy(c *config) {
-	envs := []string{"REGISTRY_USERNAME", "REGISTRY_PASSWORD", "DOCKER_REGISTRY", "TINKERBELL_GRPC_AUTHORITY", "TINKERBELL_TLS", "TINKERBELL_INSECURE_TLS", "ID", "WORKER_ID"}
+	envs := []string{
+		"REGISTRY_USERNAME", "REGISTRY_PASSWORD", "DOCKER_REGISTRY", "TINKERBELL_GRPC_AUTHORITY", "TINKERBELL_TLS", "TINKERBELL_INSECURE_TLS", "ID", "WORKER_ID",
+	}
 	for _, env := range envs {
 		if v := os.Getenv(env); v != "" {
 			switch env {
@@ -84,9 +86,13 @@ func RegisterAllFlags(c *config) *ff.FlagSet {
 	RegisterGRPCTransportFlags(c, fsg)
 	fsGrpc := ff.NewFlagSetFrom("grpc transport", fsg).SetParent(fsKubernetes)
 
+	fsw := flag.NewFlagSet("wireguard", flag.ContinueOnError)
+	RegisterWireGuardFlags(c, fsw)
+	fsWireGuard := ff.NewFlagSetFrom("wireguard", fsw).SetParent(fsGrpc)
+
 	fsf := flag.NewFlagSet("file transport", flag.ContinueOnError)
 	RegisterFileTransportFlags(c, fsf)
-	fsFile := ff.NewFlagSetFrom("file transport", fsf).SetParent(fsGrpc)
+	fsFile := ff.NewFlagSetFrom("file transport", fsf).SetParent(fsWireGuard)
 
 	fsn := flag.NewFlagSet("nats transport", flag.ContinueOnError)
 	RegisterNATSTransportFlags(c, fsn)
@@ -122,6 +128,15 @@ func RegisterGRPCTransportFlags(c *config, fs *flag.FlagSet) {
 	fs.StringVar(&c.Options.Transport.GRPC.ServerAddrPort, "grpc-server", "", "gRPC server address:port")
 	fs.BoolVar(&c.Options.Transport.GRPC.TLSEnabled, "grpc-tls", false, "gRPC TLS enabled")
 	fs.BoolVar(&c.Options.Transport.GRPC.TLSInsecure, "grpc-insecure-tls", false, "gRPC insecure TLS")
+}
+
+func RegisterWireGuardFlags(c *config, fs *flag.FlagSet) {
+	w := &c.Options.Transport.GRPC.WireGuard
+	fs.StringVar(&w.KeyFile, "wireguard-key-file", "/run/tink-agent/wireguard.key", "File holding the WireGuard bootstrap private key; generated with mode 0600 if missing")
+	fs.BoolVar(&w.TPM, "tpm", true, "Authenticate with the machine's TPM, when it has one, for Hardware that pins it")
+	fs.StringVar(&w.ServerPublicKey, "wireguard-server-public-key", "", "Tinkerbell's bootstrap WireGuard public key (base64); with the endpoint and prefix, enables WireGuard and ignores the gRPC server address")
+	fs.StringVar(&w.ServerEndpoint, "wireguard-server-endpoint", "", "Tinkerbell's bootstrap WireGuard UDP ip:port")
+	fs.StringVar(&w.Prefix, "wireguard-prefix", "", "Tinkerbell's WireGuard tunnel IPv6 /48")
 }
 
 func RegisterFileTransportFlags(c *config, fs *flag.FlagSet) {

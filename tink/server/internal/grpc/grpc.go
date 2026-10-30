@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/pkg/data"
 	"github.com/tinkerbell/tinkerbell/pkg/journal"
 	"github.com/tinkerbell/tinkerbell/pkg/proto"
+	"github.com/tinkerbell/tinkerbell/tink/server/tunnel"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -95,6 +97,8 @@ type Handler struct {
 	Backend          Backend
 	NowFunc          func() time.Time
 	AutoCapabilities AutoCapabilities
+	// Tunnel is set when WireGuard authentication is enabled.
+	Tunnel Tunnel
 
 	proto.UnimplementedWorkflowServiceServer
 }
@@ -131,12 +135,15 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 	}
 
 	attrs := convert(req.GetAgentAttributes())
+	// A session caller is already authorized for exactly one Workflow, so it is
+	// served only that Workflow and never discovers or enrolls anything.
+	session := sessionFromContext(ctx)
 
 	// hwRef is used in auto discovery and enrollment to avoid multiple lookups of the Hardware object.
 	var hwRef *tinkerbell.Hardware
 	var hwErr error
 	// handle auto discovery
-	if h.AutoCapabilities.Discovery.Enabled {
+	if h.AutoCapabilities.Discovery.Enabled && session == nil {
 		journal.Log(ctx, "auto discovery triggered")
 		// Check if there is an existing Hardware Object.
 		// If not, Discovery creates one.
@@ -156,6 +163,9 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 		// TODO: This is where we handle auto capabilities
 		journal.Log(ctx, "error getting Workflows", "error", err)
 		return nil, errors.Join(ErrBackendRead, status.Errorf(codes.Internal, "error getting workflows: %v", err))
+	}
+	if wfs, err = scopeToSession(ctx, wfs, session); err != nil {
+		return nil, err
 	}
 	if len(wfs) == 0 {
 		if h.AutoCapabilities.Enrollment.Enabled {
@@ -324,6 +334,40 @@ func (h *Handler) GetAction(ctx context.Context, req *proto.ActionRequest) (*pro
 	return ar, nil
 }
 
+func sessionFromContext(ctx context.Context) *tunnel.Session {
+	if c := tunnel.CallerFromContext(ctx); c != nil {
+		return c.Session
+	}
+	return nil
+}
+
+// scopeToSession keeps only the session's Workflow. A nil session keeps them all.
+func scopeToSession(ctx context.Context, wfs []tinkerbell.Workflow, session *tunnel.Session) ([]tinkerbell.Workflow, error) {
+	if session == nil {
+		return wfs, nil
+	}
+	wfs = slices.DeleteFunc(wfs, func(w tinkerbell.Workflow) bool {
+		return w.Namespace != session.Workflow.Namespace || w.Name != session.Workflow.Name
+	})
+	if len(wfs) == 0 {
+		journal.Log(ctx, "session Workflow has no work for this Agent")
+		return nil, status.Error(codes.NotFound, "no Action for this Agent in the session's Workflow")
+	}
+	return wfs, nil
+}
+
+// endSessionIfDone records the end of agentID's session once it has no Task
+// left in wf, or wf is no longer running.
+func (h *Handler) endSessionIfDone(wf *tinkerbell.Workflow, agentID string) {
+	rec := wf.Status.Agent(agentID)
+	if rec == nil || rec.Session.PublicKey == "" || rec.Session.RevokedAt != nil {
+		return
+	}
+	if !tunnel.SessionActive(wf, rec, h.NowFunc()) {
+		rec.Session.RevokedAt = &metav1.Time{Time: h.NowFunc().UTC()}
+	}
+}
+
 // resolveAction determines which action to serve for the given task based on the workflow's current state.
 func resolveAction(ctx context.Context, task *tinkerbell.Task, currentState *tinkerbell.CurrentState) (*tinkerbell.Action, error) {
 	switch {
@@ -462,6 +506,7 @@ func (h *Handler) ReportActionStatus(ctx context.Context, req *proto.ActionStatu
 					ActionName: req.GetActionName(),
 					TaskName:   wf.Status.Tasks[ti].Name,
 				}
+				h.endSessionIfDone(wf, req.GetAgentId())
 				if err := h.Backend.UpdateWorkflow(ctx, wf, data.UpdateOptions{StatusOnly: true}); err != nil {
 					code := codes.Internal
 					if apierrors.IsConflict(err) {
@@ -469,11 +514,17 @@ func (h *Handler) ReportActionStatus(ctx context.Context, req *proto.ActionStatu
 					}
 					return nil, status.Errorf(code, "error writing report status: %v", err)
 				}
+				if h.Tunnel != nil {
+					h.Tunnel.IndexWorkflow(wf)
+				}
 				return &proto.ActionStatusResponse{}, nil
 			}
 		}
 	}
 
+	if tunnel.CallerFromContext(ctx) != nil {
+		tunnel.AuthorizationDenials.WithLabelValues(tunnel.DeniedWrongTask).Inc()
+	}
 	return nil, status.Error(codes.NotFound, "action not found")
 }
 

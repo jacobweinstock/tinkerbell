@@ -26,6 +26,7 @@ import (
 	"github.com/tinkerbell/tinkerbell/smee"
 	"github.com/tinkerbell/tinkerbell/tink/controller"
 	"github.com/tinkerbell/tinkerbell/tink/server"
+	"github.com/tinkerbell/tinkerbell/tink/server/tunnel"
 	"github.com/tinkerbell/tinkerbell/tootles"
 	"github.com/tinkerbell/tinkerbell/ui"
 	"golang.org/x/sync/errgroup"
@@ -119,6 +120,15 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	uic := &flag.UIConfig{
 		Config: ui.NewConfig(uiOpts...),
 	}
+	wgc := &flag.WireGuardConfig{
+		Mode:                 string(tunnel.ModeDisabled),
+		AuthenticationPolicy: string(tunnel.AuthenticationPolicyFirstUse),
+		BootstrapPort:        defaultWireGuardBootstrapPort,
+		BootstrapPortV6:      defaultWireGuardBootstrapPort,
+		SessionPort:          defaultWireGuardSessionPort,
+		SessionPortV6:        defaultWireGuardSessionPort,
+		GeneratedDir:         defaultWireGuardGeneratedDir(),
+	}
 
 	// order here determines the help output.
 	top := ff.NewFlagSet("smee - DHCP and iPXE service")
@@ -132,7 +142,8 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	rfs := ff.NewFlagSet("rufio - BMC controller").SetParent(cfs)
 	ssfs := ff.NewFlagSet("secondstar - SSH over serial service").SetParent(rfs)
 	uifs := ff.NewFlagSet("ui - UI service").SetParent(ssfs)
-	gfs := ff.NewFlagSet("globals").SetParent(uifs)
+	wgfs := ff.NewFlagSet("wireguard - Agent authentication").SetParent(uifs)
+	gfs := ff.NewFlagSet("globals").SetParent(wgfs)
 	flag.RegisterSmeeFlags(&flag.Set{FlagSet: sfs}, s)
 	flag.RegisterTootlesFlags(&flag.Set{FlagSet: hfs}, h)
 	flag.RegisterTinkServerFlags(&flag.Set{FlagSet: tfs}, ts)
@@ -140,6 +151,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	flag.RegisterRufioFlags(&flag.Set{FlagSet: rfs}, rc)
 	flag.RegisterSecondStarFlags(&flag.Set{FlagSet: ssfs}, ssc)
 	flag.RegisterUIFlags(&flag.Set{FlagSet: uifs}, uic)
+	flag.RegisterWireGuardFlags(&flag.Set{FlagSet: wgfs}, wgc)
 	flag.RegisterGlobal(&flag.Set{FlagSet: gfs}, globals)
 	if embeddedApiserverExecute != nil && embeddedFlagSet != nil {
 		// This way the embedded flags only show up when the embedded services have been compiled in.
@@ -177,6 +189,10 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	if err := validatePublicAddressFamilies(globals.PublicIP, globals.PublicIPv6); err != nil {
 		return err
 	}
+	if err := wgc.Validate(globals.ListenerFamilies); err != nil {
+		return err
+	}
+	wgMode, _ := tunnel.ParseMode(wgc.Mode)
 	// Collected before resolving, which zeroes the fields these flag values point at.
 	ignoredFlags := ignoredFamilyFlags(gfs, globals.ListenerFamilies)
 	resolveListenerFamilies(globals, s, ts, ssc)
@@ -255,6 +271,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		"globalBindAddress", globals.BindAddr,
 		"globalBindAddressV6", globals.BindAddrV6,
 		"servedFamilies", servedFamilies(globals, s),
+		"wireguardMode", wgMode,
 	}
 	if len(globals.BackendKubeNamespaces) > 0 {
 		startKV = append(startKV, "backendKubeNamespaces", globals.BackendKubeNamespaces)
@@ -296,7 +313,7 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		}
 		ts.Config.TLS.Cert = creds
 		// When using TLS with the Tink Server, the Agent needs to know that TLS is enabled.
-		// Set UseTLS so the iPXE script template emits tinkerbell_tls=true in kernel args.
+		// Set UseTLS so the iPXE script template emits tinkerbell_grpc_tls=true in kernel args.
 		s.Config.TinkServer.UseTLS = true
 	}
 
@@ -411,6 +428,21 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 		s.Config.Backend = b.RenderedReader()
 		h.Config.SetBackendFromFilterer(b.RenderedReader())
 		ts.Config.SetBackends(b)
+		if wgMode != tunnel.ModeDisabled && globals.EnableTinkServer {
+			v4, v6 := wgc.Convert(globals.ListenerFamilies, globals.BindAddr, globals.BindAddrV6, globals.PublicIP, globals.PublicIPv6)
+			ll := ternary((wgc.LogLevel != 0), wgc.LogLevel, globals.LogLevel)
+			tm, err := newTunnel(ctx, getLogger(ll).WithName("wireguard"), wgc, wgMode, b, v4, v6)
+			if err != nil {
+				return startupErr(err)
+			}
+			ts.Config.Tunnel = tm
+			// Each family's boot scripts advertise that family's bootstrap endpoint.
+			s.Config.IPXE.HTTPScriptServer.ExtraKernelArgs = append(s.Config.IPXE.HTTPScriptServer.ExtraKernelArgs, wireGuardKernelParams(tm, false)...)
+			s.Config.IPXE.HTTPScriptServer.ExtraKernelArgsV6 = append(s.Config.IPXE.HTTPScriptServer.ExtraKernelArgsV6, wireGuardKernelParams(tm, true)...)
+			g.Go(func() error {
+				return tm.Run(ctx)
+			})
+		}
 		tc.Config.Client = b.ClientConfig
 		tc.Config.ReferenceResolver = b
 		rc.Config.Client = b.ClientConfig
@@ -433,6 +465,10 @@ func executeWithOutput(ctx context.Context, cancel context.CancelFunc, args []st
 	case "pass":
 	default:
 		return startupErr(fmt.Errorf("unknown backend %q", globals.Backend))
+	}
+
+	if wgMode != tunnel.ModeDisabled && globals.EnableTinkServer && ts.Config.Tunnel == nil {
+		return startupErr(fmt.Errorf("WireGuard mode %q requires the kube backend", wgMode))
 	}
 
 	// Kube Controller Manager

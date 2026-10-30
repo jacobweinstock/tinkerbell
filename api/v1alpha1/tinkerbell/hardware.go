@@ -50,6 +50,10 @@ type HardwareSpec struct {
 	// It is typically the MAC address of the primary network interface.
 	AgentID string `json:"agentID,omitempty"`
 
+	// Agent holds the settings of this Hardware's Agent.
+	// +optional
+	Agent HardwareAgent `json:"agent,omitzero"`
+
 	// Auto is the configuration for the automatic capabilities.
 	Auto AutoCapabilities `json:"auto,omitempty"`
 

@@ -376,7 +376,7 @@ When `--tls-cert-file` and `--tls-key-file` are provided:
 2. Select routes (metadata, UI, ISO) are served on both HTTP and HTTPS.
 3. Some routes redirect HTTP → HTTPS automatically (308 Permanent Redirect).
 4. The gRPC server (port 42113) also uses TLS.
-5. Tink agents are informed of TLS via the iPXE kernel argument `tinkerbell_tls=true`.
+5. Tink agents are informed of TLS via the iPXE kernel argument `tinkerbell_grpc_tls=true`.
 
 ### Disabling HTTP → HTTPS redirects
 

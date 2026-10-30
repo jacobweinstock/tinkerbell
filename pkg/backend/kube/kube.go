@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	toolscache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -213,4 +214,18 @@ func ternary[T any](condition bool, valueIfTrue, valueIfFalse T) T {
 		return valueIfTrue
 	}
 	return valueIfFalse
+}
+
+// AddEventHandler registers h with the cache's informer for obj's type, so h
+// sees every object of that type the backend watches, including those that
+// exist when the cache starts.
+func (b *Backend) AddEventHandler(ctx context.Context, obj client.Object, h toolscache.ResourceEventHandler) error {
+	inf, err := b.cluster.GetCache().GetInformer(ctx, obj)
+	if err != nil {
+		return fmt.Errorf("failed to get informer for %T: %w", obj, err)
+	}
+	if _, err := inf.AddEventHandler(h); err != nil {
+		return fmt.Errorf("failed to add event handler for %T: %w", obj, err)
+	}
+	return nil
 }

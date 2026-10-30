@@ -31,6 +31,11 @@ const (
 	ToggleAllowNetbootFalse WorkflowConditionType = "AllowNetbootFalse"
 	TemplateRenderedSuccess WorkflowConditionType = "TemplateRenderedSuccess"
 
+	// AgentRebindAnnotation on a Workflow hands one Agent's binding in it over to another bootstrap
+	// public key. Its value is "<agentID>=<key>"; an empty key clears the binding so the next key to
+	// Register is bound. The server removes the annotation once applied.
+	AgentRebindAnnotation = "tinkerbell.org/agent-rebind"
+
 	TemplateRenderingSuccessful TemplateRendering = "successful"
 	TemplateRenderingFailed     TemplateRendering = "failed"
 
@@ -176,12 +181,25 @@ type WorkflowStatus struct {
 	// GlobalTimeout represents the max execution time.
 	GlobalTimeout int64 `json:"globalTimeout,omitempty"`
 
+	// GlobalExecutionStart is when the first Agent session was granted, which starts the execution
+	// clock. It is only set with WireGuard Agent authentication.
+	// +optional
+	GlobalExecutionStart *metav1.Time `json:"globalExecutionStart,omitempty"`
+
 	// GlobalExecutionStop represents the time when the Workflow should stop executing.
-	// After this time, the Workflow will be marked as TIMEOUT.
+	// After this time, the Workflow will be marked as TIMEOUT. With GlobalExecutionStart set, it is
+	// GlobalExecutionStart plus GlobalTimeout and fixed: no session is granted or valid at or after it.
 	GlobalExecutionStop *metav1.Time `json:"globalExecutionStop,omitempty"`
 
 	// CurrentState tracks where the workflow is in its execution.
 	CurrentState *CurrentState `json:"currentState,omitempty"`
+
+	// Agents records, per Agent, the credential it authenticated with in this Workflow and the session
+	// it was last granted.
+	// +optional
+	// +listType=map
+	// +listMapKey=agentID
+	Agents []WorkflowAgentStatus `json:"agents,omitempty"`
 
 	// Tasks are the tasks to be run by the Agent(s).
 	Tasks []Task `json:"tasks,omitempty"`
@@ -193,6 +211,79 @@ type WorkflowStatus struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Conditions []WorkflowCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+}
+
+// WorkflowAgentStatus is one Agent's record in a Workflow: the credential it
+// authenticated with, and the session that authorizes it to run its Tasks.
+type WorkflowAgentStatus struct {
+	AgentID string `json:"agentID"`
+	// Credential is what the Agent authenticated with.
+	// +optional
+	Credential AgentCredential `json:"credential,omitzero"`
+	// Session is what authorization granted the Agent in this Workflow.
+	// +optional
+	Session AgentSession `json:"session,omitzero"`
+}
+
+// AgentCredential is the credential an Agent authenticated with, and why it was
+// accepted. Its WireGuard key is set for every credential type, because every
+// Agent proves one through the tunnel handshake.
+// +kubebuilder:validation:XValidation:rule="has(self.tpm) == (has(self.type) && self.type == 'TPM')",message="tpm is set exactly when type is TPM"
+type AgentCredential struct {
+	// Type is the kind of credential that identifies the Agent.
+	// +optional
+	// +kubebuilder:validation:Enum=WireGuard;TPM
+	Type CredentialType `json:"type,omitempty"`
+	// Trust is why the credential was accepted.
+	// +optional
+	// +kubebuilder:validation:Enum=FirstUse;Pinned
+	Trust CredentialTrust `json:"trust,omitempty"`
+	// WireGuard is the WireGuard bootstrap key that holds the session. With FirstUse trust it is
+	// the binding: only this key is granted sessions for this Agent until the Workflow ends or an
+	// operator rebinds, and an empty key means the next key to Register is bound.
+	// +optional
+	WireGuard WireGuardCredential `json:"wireguard,omitzero"`
+	// TPM is the TPM that vouched for the WireGuard key. It is set when Type is TPM.
+	// +optional
+	TPM *TPMCredential `json:"tpm,omitempty"`
+	// AuthenticatedAt is when Register last authenticated the credential.
+	// +optional
+	AuthenticatedAt *metav1.Time `json:"authenticatedAt,omitempty"`
+}
+
+// WireGuardCredential is an Agent's WireGuard bootstrap key.
+type WireGuardCredential struct {
+	// PublicKey is the bootstrap public key, base64.
+	// +optional
+	PublicKey string `json:"publicKey,omitempty"`
+	// Endpoint is the UDP ip:port the key registered from.
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+}
+
+// TPMCredential is the TPM that vouched for an Agent's WireGuard key.
+type TPMCredential struct {
+	// EKPublicKeyHash is the SHA-256 of the TPM's EK public key's PKIX DER encoding, lowercase hex.
+	EKPublicKeyHash string `json:"ekPublicKeyHash"`
+}
+
+// AgentSession is a session: a WireGuard key that lets one Agent run its Tasks
+// in one Workflow until the Workflow's execution deadline.
+type AgentSession struct {
+	// PublicKey is the public half of the session key last granted. Empty when there is none.
+	// +optional
+	PublicKey string `json:"publicKey,omitempty"`
+	// Address is the Agent's session tunnel address.
+	// +optional
+	Address string `json:"address,omitempty"`
+	// +optional
+	IssuedAt *metav1.Time `json:"issuedAt,omitempty"`
+	// ExpiresAt is the Workflow's execution deadline.
+	// +optional
+	ExpiresAt *metav1.Time `json:"expiresAt,omitempty"`
+	// RevokedAt is set when the session key was revoked before ExpiresAt.
+	// +optional
+	RevokedAt *metav1.Time `json:"revokedAt,omitempty"`
 }
 
 // JobStatus holds the state of a specific job.bmc.tinkerbell.org object created.
@@ -304,6 +395,16 @@ func (w *WorkflowStatus) SetCondition(wc WorkflowCondition) {
 	}
 
 	w.Conditions = append(w.Conditions, wc)
+}
+
+// Agent returns the record for agentID, or nil.
+func (w *WorkflowStatus) Agent(agentID string) *WorkflowAgentStatus {
+	for i := range w.Agents {
+		if w.Agents[i].AgentID == agentID {
+			return &w.Agents[i]
+		}
+	}
+	return nil
 }
 
 // SetConditionIfDifferent updates the status with a condition, if:

@@ -50,6 +50,44 @@ spec:
           spec:
             description: HardwareSpec defines the desired state of Hardware.
             properties:
+              agent:
+                description: Agent holds the settings of this Hardware's Agent.
+                properties:
+                  authentication:
+                    description: |-
+                      Authentication is how the Agent proves it is AgentID, in every Workflow.
+                      Without it, the Agent's WireGuard key is trusted on first use.
+                    properties:
+                      tpm:
+                        description: |-
+                          TPM identifies the Agent by its TPM's endorsement key. The Agent's
+                          WireGuard key may change every boot.
+                        properties:
+                          ekPublicKeyHash:
+                            description: |-
+                              EKPublicKeyHash pins the EK: the SHA-256 of the EK public key's PKIX DER
+                              encoding, lowercase hex. The Agent logs it at startup.
+                            pattern: ^[0-9a-f]{64}$
+                            type: string
+                        required:
+                        - ekPublicKeyHash
+                        type: object
+                      wireguard:
+                        description: WireGuard identifies the Agent by its WireGuard
+                          bootstrap key.
+                        properties:
+                          publicKey:
+                            description: |-
+                              PublicKey pins the WireGuard bootstrap public key, base64. Without it,
+                              the key is trusted on first use.
+                            pattern: ^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$
+                            type: string
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: set at most one credential type
+                      rule: '!(has(self.wireguard) && has(self.tpm))'
+                type: object
               agentID:
                 description: |-
                   AgentID is the unique identifier an Agent uses that is associated with this Hardware.

@@ -22,7 +22,12 @@ const (
 // If the Hardware object already exists, it will not be modified.
 // If the Hardware object is created, it will be created in the namespace defined in the AutoDiscovery configuration.
 func (h *Handler) Discover(ctx context.Context, agentID string, attrs *data.AgentAttributes) (*v1alpha1.Hardware, error) {
-	ns := h.AutoCapabilities.Discovery.Namespace
+	return h.discoverIn(ctx, agentID, attrs, h.AutoCapabilities.Discovery.Namespace, h.AutoCapabilities.Discovery.EnrollmentEnabled)
+}
+
+// discoverIn is Discover, creating the Hardware in ns with enrollmentEnabled
+// persisted in its spec.
+func (h *Handler) discoverIn(ctx context.Context, agentID string, attrs *data.AgentAttributes, ns string, enrollmentEnabled bool) (*v1alpha1.Hardware, error) {
 	hwName, err := makeValidName(agentID, discoveryPrefix)
 	if err != nil {
 		journal.Log(ctx, "Error making discovery ID a valid Kubernetes name", "error", err)
@@ -65,7 +70,7 @@ func (h *Handler) Discover(ctx context.Context, agentID string, attrs *data.Agen
 		Spec: v1alpha1.HardwareSpec{
 			AgentID: agentID,
 			Auto: v1alpha1.AutoCapabilities{
-				EnrollmentEnabled: h.AutoCapabilities.Discovery.EnrollmentEnabled,
+				EnrollmentEnabled: enrollmentEnabled,
 			},
 		},
 	}

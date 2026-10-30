@@ -79,3 +79,28 @@ tests:
       - contains:
           path: spec.template.spec.containers[?(@.name == "tinkerbell")].env
           content: {name: TINKERBELL_DHCP_DEFAULT_DOMAIN_SEARCH_LIST_V6, value: "example.com,lab.example.com"}
+
+  - it: sets the Agent authentication policy
+    set:
+      publicIP: 1.1.1.1
+      artifactsFileServer: http://2.2.2.2
+      deployment.envs.wireguard.mode: required
+      deployment.envs.wireguard.agentAuthenticationPolicy: pinned
+      deployment.envs.wireguard.secretName: wg
+      deployment.envs.wireguard.prefix: fd00:1:2::/48
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[?(@.name == "tinkerbell")].env
+          content: {name: TINKERBELL_AGENT_AUTHENTICATION_POLICY, value: "pinned"}
+
+  - it: rejects the pinned Agent authentication policy without required mode
+    set:
+      publicIP: 1.1.1.1
+      artifactsFileServer: http://2.2.2.2
+      deployment.envs.wireguard.mode: optional
+      deployment.envs.wireguard.agentAuthenticationPolicy: pinned
+      deployment.envs.wireguard.secretName: wg
+      deployment.envs.wireguard.prefix: fd00:1:2::/48
+    asserts:
+      - failedTemplate:
+          errorPattern: agentAuthenticationPolicy pinned requires deployment.envs.wireguard.mode required

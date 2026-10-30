@@ -1,6 +1,9 @@
 package script
 
 // HookScript is the default iPXE script for loading Hook.
+//
+// The Tink Agent values are tinkerbell_<flag> parameters, which CaptainOS
+// passes to the Agent as the named flag.
 var HookScript = `#!ipxe
 ` + syslogScript + `
 echo Loading the Tinkerbell Hook iPXE script...
@@ -17,8 +20,8 @@ set retry_delay:int32 {{ .RetryDelay }}
 
 set idx:int32 0
 :retry_kernel
-kernel ${download-url}/${kernel} {{- if ne .VLANID "" }} vlan_id={{ .VLANID }} {{- end }} \
-facility={{ .Facility }} syslog_host={{ .SelectedSyslogHost }} grpc_authority={{ .TinkGRPCAuthority }} tinkerbell_tls={{ .TinkerbellTLS }} tinkerbell_insecure_tls={{ .TinkerbellInsecureTLS }} worker_id={{ .WorkerID }} hw_addr={{ .HWAddr }} \
+kernel ${download-url}/${kernel} \
+facility={{ .Facility }} syslog_host={{ .SelectedSyslogHost }} tinkerbell_grpc_server={{ .TinkGRPCAuthority }} tinkerbell_grpc_tls={{ .TinkerbellTLS }} tinkerbell_grpc_insecure_tls={{ .TinkerbellInsecureTLS }} tinkerbell_id={{ .WorkerID }} \
 modules=loop,squashfs,sd-mod,usb-storage intel_iommu=on iommu=pt initrd=${initrd} console=tty0 console=ttyS1,115200 {{- range .ExtraKernelParams}} {{.}} {{- end}} && goto download_initrd || iseq ${idx} ${retries} && goto kernel-error || inc idx && echo retry in ${retry_delay} seconds ; sleep ${retry_delay} ; goto retry_kernel
 
 :download_initrd
@@ -70,14 +73,12 @@ type Hook struct {
 	DownloadURL           string        // example https://location:8080/to/kernel/and/initrd
 	ExtraKernelParams     []string      // example tink_worker_image=quay.io/tinkerbell/tink-worker:v0.8.0
 	Facility              string
-	HWAddr                string // example 3c:ec:ef:4c:4f:54
 	SyslogHost            string
 	SyslogHostV6          string // used only by the DHCPv6 boot script
 	TinkerbellTLS         bool
 	TinkerbellInsecureTLS bool
 	TinkGRPCAuthority     string // example 192.168.2.111:42113
 	TraceID               string
-	VLANID                string // string number between 1-4095
 	WorkerID              string // example 3c:ec:ef:4c:4f:54 or worker1
 	Retries               int    // number of retries to attempt when fetching kernel and initrd files
 	RetryDelay            int    // number of seconds to wait between retries

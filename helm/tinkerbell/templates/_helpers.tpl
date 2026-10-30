@@ -143,3 +143,18 @@ Usage: {{ include "tinkerbell.toOptionalJsonArray" .resourceNames }}
 {{- end -}}
 {{- end -}}
 
+
+{{/*
+tinkerbell.wireguardPorts returns the WireGuard device ports as a JSON list of {name, port}.
+*/}}
+{{- define "tinkerbell.wireguardPorts" -}}
+{{- $wg := .Values.deployment.envs.wireguard -}}
+{{- $boot := include "tinkerbell.servedPort" (dict "v4" $wg.bootstrapPort "v6" (default $wg.bootstrapPort $wg.bootstrapPortV6) "ctx" .) | int -}}
+{{- $sess := include "tinkerbell.servedPort" (dict "v4" $wg.sessionPort "v6" (default $wg.sessionPort $wg.sessionPortV6) "ctx" .) | int -}}
+{{- $ports := list (dict "name" "wg-bootstrap" "port" $boot) (dict "name" "wg-session" "port" $sess) -}}
+{{- if $wg.previousBootstrapPort -}}
+{{- $prev := include "tinkerbell.servedPort" (dict "v4" $wg.previousBootstrapPort "v6" (default $wg.previousBootstrapPort $wg.previousBootstrapPortV6) "ctx" .) | int -}}
+{{- $ports = append $ports (dict "name" "wg-boot-prev" "port" $prev) -}}
+{{- end -}}
+{{- $ports | toJson -}}
+{{- end -}}

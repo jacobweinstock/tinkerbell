@@ -95,8 +95,8 @@ func TestISOHandlersEndpointFamily(t *testing.T) {
 					t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
 				}
 				want := "console=ttyAMA0 console=ttyS0 console=tty0 console=tty1 console=ttyS1" +
-					" hw_addr=" + mac + " syslog_host=" + tt.wantSyslog + " grpc_authority=" + tt.wantGRPC +
-					" tinkerbell_tls=true worker_id=" + mac + " " + tt.wantKernelArg
+					" syslog_host=" + tt.wantSyslog +
+					" tinkerbell_grpc_server=" + tt.wantGRPC + " tinkerbell_grpc_tls=true tinkerbell_id=" + mac + " " + tt.wantKernelArg
 				if diff := cmp.Diff(want, strings.TrimSpace(w.Body.String())); diff != "" {
 					t.Fatalf("patched ISO mismatch (-want +got):\n%s", diff)
 				}

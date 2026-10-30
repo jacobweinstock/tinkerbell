@@ -34,7 +34,6 @@ const (
 
 	// InstanceIDIndex is an index used with a controller-runtime client to lookup hardware by its metadata instance id.
 	InstanceIDIndex = ".Spec.Metadata.Instance.ID" // #nosec G101 - This is a field path, not a credential
-
 )
 
 // Indexes that are currently known.

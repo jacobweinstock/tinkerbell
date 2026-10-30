@@ -111,7 +111,7 @@ func TestPatching(t *testing.T) {
 	// mount the ISO file and check if the magic string was patched
 
 	// If anything changes here the space padding will be different. Be sure to update it accordingly.
-	kernelArgs := `facility=test console=ttyAMA0 console=ttyS0 console=tty0 console=tty1 console=ttyS1 vlan_id=400 hw_addr=de:ed:be:ef:fe:ed syslog_host=127.0.0.1:514 grpc_authority=127.0.0.1:42113 tinkerbell_tls=false worker_id=de:ed:be:ef:fe:ed k1=1 k2=2 ipam=de-ed-be-ef-fe-ed:400:::::::`
+	kernelArgs := `facility=test console=ttyAMA0 console=ttyS0 console=tty0 console=tty1 console=ttyS1 syslog_host=127.0.0.1:514 tinkerbell_grpc_server=127.0.0.1:42113 tinkerbell_grpc_tls=false tinkerbell_id=de:ed:be:ef:fe:ed k1=1 k2=2 ipam=de-ed-be-ef-fe-ed:400:::::::`
 	wantGrubCfg := fmt.Sprintf(`set timeout=0
 set gfxpayload=text
 menuentry 'LinuxKit ISO Image' {

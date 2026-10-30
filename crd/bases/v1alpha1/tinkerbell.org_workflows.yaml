@@ -363,6 +363,99 @@ spec:
                 description: AgentID is the ID of the Agent with which this Workflow
                   is associated.
                 type: string
+              agents:
+                description: |-
+                  Agents records, per Agent, the credential it authenticated with in this Workflow and the session
+                  it was last granted.
+                items:
+                  description: |-
+                    WorkflowAgentStatus is one Agent's record in a Workflow: the credential it
+                    authenticated with, and the session that authorizes it to run its Tasks.
+                  properties:
+                    agentID:
+                      type: string
+                    credential:
+                      description: Credential is what the Agent authenticated with.
+                      properties:
+                        authenticatedAt:
+                          description: AuthenticatedAt is when Register last authenticated
+                            the credential.
+                          format: date-time
+                          type: string
+                        tpm:
+                          description: TPM is the TPM that vouched for the WireGuard
+                            key. It is set when Type is TPM.
+                          properties:
+                            ekPublicKeyHash:
+                              description: EKPublicKeyHash is the SHA-256 of the TPM's
+                                EK public key's PKIX DER encoding, lowercase hex.
+                              type: string
+                          required:
+                          - ekPublicKeyHash
+                          type: object
+                        trust:
+                          description: Trust is why the credential was accepted.
+                          enum:
+                          - FirstUse
+                          - Pinned
+                          type: string
+                        type:
+                          description: Type is the kind of credential that identifies
+                            the Agent.
+                          enum:
+                          - WireGuard
+                          - TPM
+                          type: string
+                        wireguard:
+                          description: |-
+                            WireGuard is the WireGuard bootstrap key that holds the session. With FirstUse trust it is
+                            the binding: only this key is granted sessions for this Agent until the Workflow ends or an
+                            operator rebinds, and an empty key means the next key to Register is bound.
+                          properties:
+                            endpoint:
+                              description: Endpoint is the UDP ip:port the key registered
+                                from.
+                              type: string
+                            publicKey:
+                              description: PublicKey is the bootstrap public key,
+                                base64.
+                              type: string
+                          type: object
+                      type: object
+                      x-kubernetes-validations:
+                      - message: tpm is set exactly when type is TPM
+                        rule: has(self.tpm) == (has(self.type) && self.type == 'TPM')
+                    session:
+                      description: Session is what authorization granted the Agent
+                        in this Workflow.
+                      properties:
+                        address:
+                          description: Address is the Agent's session tunnel address.
+                          type: string
+                        expiresAt:
+                          description: ExpiresAt is the Workflow's execution deadline.
+                          format: date-time
+                          type: string
+                        issuedAt:
+                          format: date-time
+                          type: string
+                        publicKey:
+                          description: PublicKey is the public half of the session
+                            key last granted. Empty when there is none.
+                          type: string
+                        revokedAt:
+                          description: RevokedAt is set when the session key was revoked
+                            before ExpiresAt.
+                          format: date-time
+                          type: string
+                      type: object
+                  required:
+                  - agentID
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - agentID
+                x-kubernetes-list-type: map
               bootOptions:
                 description: BootOptions holds the state of any boot options.
                 properties:
@@ -448,10 +541,17 @@ spec:
                   taskName:
                     type: string
                 type: object
+              globalExecutionStart:
+                description: |-
+                  GlobalExecutionStart is when the first Agent session was granted, which starts the execution
+                  clock. It is only set with WireGuard Agent authentication.
+                format: date-time
+                type: string
               globalExecutionStop:
                 description: |-
                   GlobalExecutionStop represents the time when the Workflow should stop executing.
-                  After this time, the Workflow will be marked as TIMEOUT.
+                  After this time, the Workflow will be marked as TIMEOUT. With GlobalExecutionStart set, it is
+                  GlobalExecutionStart plus GlobalTimeout and fixed: no session is granted or valid at or after it.
                 format: date-time
                 type: string
               globalTimeout:

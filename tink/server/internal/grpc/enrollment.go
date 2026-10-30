@@ -20,6 +20,10 @@ import (
 
 const (
 	workflowPrefix = "enrollment-"
+
+	// EnrollmentKeyAnnotation records the bootstrap key that enrolled a Workflow. The Workflow's
+	// first session for its Agent can only bind that key.
+	EnrollmentKeyAnnotation = "tinkerbell.org/enrollment-agent-key"
 )
 
 type match struct {
@@ -32,11 +36,25 @@ type match struct {
 // until the Tink Controller reconciles it.
 // auto enrollment does not support Templates with multiple Agents defined.
 func (h *Handler) enroll(ctx context.Context, agentID string, attr *data.AgentAttributes, hardware *tinkerbell.Hardware) error {
+	created, err := h.enrollKey(ctx, agentID, attr, hardware, "")
+	if created {
+		return status.Error(codes.NotFound, "enrollment Workflow created, no Action available yet")
+	}
+	return err
+}
+
+// enrollKey is enroll for a caller authenticated with a WireGuard bootstrap key.
+// A non-empty key is recorded on the created Workflow before it exists, in the
+// enrollment key annotation, so the Workflow's first binding can only be that
+// key. Every Agent's identity is a Hardware object, so for an Agent without
+// one, a minimal Hardware is created first, in the matched WorkflowRuleSet's
+// namespace. created reports whether a Workflow was created.
+func (h *Handler) enrollKey(ctx context.Context, agentID string, attr *data.AgentAttributes, hardware *tinkerbell.Hardware, key string) (created bool, err error) {
 	log := h.Logger.WithValues("agentID", agentID)
 	// If auto enrollment is not enabled, then we do not create a Workflow for the AgentID.
 	if hardware != nil && !hardware.Spec.Auto.EnrollmentEnabled {
 		journal.Log(ctx, "auto enrollment is disabled for this hardware", "hardware", hardware.Name)
-		return status.Errorf(codes.FailedPrecondition, "auto enrollment is disabled for this hardware")
+		return false, status.Errorf(codes.FailedPrecondition, "auto enrollment is disabled for this hardware")
 	}
 
 	// Get all WorkflowRuleSets and check if there is a match to the AgentID or the Attributes (if Attributes are provided by request)
@@ -45,12 +63,12 @@ func (h *Handler) enroll(ctx context.Context, agentID string, attr *data.AgentAt
 	wrs, err := h.AutoCapabilities.Enrollment.ListWorkflowRuleSets(ctx, data.WorkflowFilter{})
 	if err != nil {
 		journal.Log(ctx, "error getting workflow rules", "error", err)
-		return errors.Join(ErrBackendRead, status.Errorf(codes.Internal, "error getting workflow rules: %v", err))
+		return false, errors.Join(ErrBackendRead, status.Errorf(codes.Internal, "error getting workflow rules: %v", err))
 	}
 	name, err := makeValidName(agentID, workflowPrefix)
 	if err != nil {
 		journal.Log(ctx, "error making agentID a valid Kubernetes name", "error", err)
-		return status.Errorf(codes.Internal, "error making agentID a valid Kubernetes name: %v", err)
+		return false, status.Errorf(codes.Internal, "error making agentID a valid Kubernetes name: %v", err)
 	}
 	log = log.WithValues("workflowName", name)
 
@@ -106,6 +124,14 @@ func (h *Handler) enroll(ctx context.Context, agentID string, attr *data.AgentAt
 				Disabled:    final.wrs.Spec.Workflow.Disabled,
 			},
 		}
+		if hardware == nil && key != "" {
+			hw, err := h.discoverIn(ctx, agentID, attr, final.wrs.Namespace, true)
+			if err != nil {
+				journal.Log(ctx, "error creating Hardware for the enrolling Agent", "error", err)
+				return false, errors.Join(ErrBackendWrite, status.Errorf(codes.Unavailable, "error creating Hardware for the enrolling Agent: %v", err))
+			}
+			hardware = hw
+		}
 		if hardware != nil {
 			awf.Spec.HardwareRef = hardware.Name
 		}
@@ -123,6 +149,13 @@ func (h *Handler) enroll(ctx context.Context, agentID string, attr *data.AgentAt
 			}
 		}
 
+		if key != "" {
+			if awf.Annotations == nil {
+				awf.Annotations = make(map[string]string)
+			}
+			awf.Annotations[EnrollmentKeyAnnotation] = key
+		}
+
 		if awf.Spec.HardwareMap == nil {
 			awf.Spec.HardwareMap = make(map[string]string)
 		}
@@ -134,18 +167,18 @@ func (h *Handler) enroll(ctx context.Context, agentID string, attr *data.AgentAt
 			if apierrors.IsAlreadyExists(err) {
 				journal.Log(ctx, "workflow already exists", "workflow", name, "namespace", final.wrs.Namespace)
 				// The Workflow exists but isn't cached yet. That resolves itself, so it isn't an error.
-				return status.Error(codes.FailedPrecondition, "existing workflow found")
+				return false, status.Error(codes.FailedPrecondition, "existing workflow found")
 			}
 			journal.Log(ctx, "error creating enrollment workflow", "error", err)
-			return errors.Join(ErrBackendWrite, status.Errorf(codes.Internal, "error creating enrollment workflow: %v", err))
+			return false, errors.Join(ErrBackendWrite, status.Errorf(codes.Internal, "error creating enrollment workflow: %v", err))
 		}
 		journal.Log(ctx, "created enrollment Workflow", "namespace", awf.Namespace, "workflowRuleSet", final.wrs.Name)
 		log.Info("created enrollment Workflow", "namespace", awf.Namespace, "workflowRuleSet", final.wrs.Name)
 
-		return status.Error(codes.NotFound, "enrollment Workflow created, no Action available yet")
+		return true, nil
 	}
 	journal.Log(ctx, "no WorkflowRuleSet matched")
-	return status.Errorf(codes.NotFound, "no Workflow Rule Sets found or matched for Agent %s", agentID)
+	return false, status.Errorf(codes.NotFound, "no Workflow Rule Sets found or matched for Agent %s", agentID)
 }
 
 func findMatch(wr tinkerbell.WorkflowRuleSet, attr *data.AgentAttributes, curMatches int) (*match, error) {

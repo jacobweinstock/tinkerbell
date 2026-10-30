@@ -187,6 +187,40 @@ deployment:
       enableAutoLogin: false
       logLevel: 0
       urlPrefix: "/"
+    # WireGuard authentication of Tink Agents.
+    # See docs/technical/designs/AGENT_WIREGUARD_AUTHN.md.
+    wireguard:
+      # One of disabled, optional, required.
+      mode: disabled
+      # Agent credential trust accepted. first-use also binds an Agent whose Hardware pins no
+      # credential in spec.agent.authentication to the first key that registers for a Workflow.
+      # pinned accepts only pinned credentials, and requires mode: required.
+      agentAuthenticationPolicy: first-use
+      # Required when enabled: a Secret, in the release namespace, with three keys, each a base64 32 byte key:
+      #   bootstrap.key  (wg genkey)
+      #   session.key    (wg genkey, different from bootstrap.key)
+      #   psk-root       (openssl rand -base64 32)
+      # and, only while rotating the bootstrap key, previous-bootstrap.key (the old bootstrap.key).
+      # It is mounted as files, so Tinkerbell needs no access to Secrets.
+      secretName: ""
+      # Required when enabled: an IPv6 /48 used only inside the tunnels, e.g. a random fdXX:XXXX:XXXX::/48.
+      prefix: ""
+      # Addresses the devices listen on, per family. Empty uses the global bind address.
+      bindAddr: ""
+      bindAddrV6: ""
+      # UDP ports of the bootstrap and session devices, exposed on the Service when enabled. The V6
+      # ports default to the IPv4 ones when empty.
+      bootstrapPort: 51820
+      bootstrapPortV6: ""
+      sessionPort: 51821
+      sessionPortV6: ""
+      # Set only while rotating the bootstrap key: the port Agents booted with the old key use,
+      # that is, the bootstrapPort before the rotation. The old key's device then redirects them to
+      # the current one. Requires previous-bootstrap.key in the Secret. Unset it once they have moved.
+      previousBootstrapPort: 0
+      previousBootstrapPortV6: ""
+      bindingSourceCheck: false
+      logLevel: 0
   hostNetwork: false
   image: ghcr.io/tinkerbell/tinkerbell
   imagePullPolicy: IfNotPresent

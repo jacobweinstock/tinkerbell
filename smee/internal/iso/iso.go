@@ -177,11 +177,18 @@ func (h *Handler) Copy(ctx context.Context, dst io.Writer, src io.Reader, buf []
 			// This is the patching check and handling.
 			b := buf[:nr]
 			i := bytes.Index(b, []byte(h.Patch.MagicString))
+			patch := internal.GetPatch(ctx)
+			// The patch replaces the magic string in place, so a longer one
+			// would overwrite the boot configuration that follows it.
+			if i != -1 && len(patch) > len(h.Patch.MagicString) {
+				h.Logger.Error(errors.New("kernel parameters do not fit in the ISO's patch slot"), "ISO not patched", "length", len(patch), "max", len(h.Patch.MagicString))
+				i = -1
+			}
 			if i != -1 {
 				dup := make([]byte, len(b))
 				copy(dup, b)
 				copy(dup[i:], h.Patch.magicStrPadding)
-				copy(dup[i:], internal.GetPatch(ctx))
+				copy(dup[i:], patch)
 				b = dup
 			}
 			if sl != nil {
@@ -425,16 +432,16 @@ func archiveFor(spec *tinkerbell.Hardware) func() ([]byte, error) {
 }
 
 func (h *Handler) constructPatch(console, mac string, d *dhcp.DHCP) string {
-	syslogHost := fmt.Sprintf("syslog_host=%s", h.Patch.KernelParams.Syslog)
-	grpcAuthority := fmt.Sprintf("grpc_authority=%s", h.Patch.KernelParams.TinkServerGRPCAddr)
-	tinkerbellTLS := fmt.Sprintf("tinkerbell_tls=%v", h.Patch.KernelParams.TinkServerTLS)
-	workerID := fmt.Sprintf("worker_id=%s", mac)
-	hwAddr := fmt.Sprintf("hw_addr=%s", mac)
-	all := []string{console}
-	if d != nil && d.VLANID != "" {
-		all = append(all, fmt.Sprintf("vlan_id=%s", d.VLANID))
+	all := []string{
+		console,
+		fmt.Sprintf("syslog_host=%s", h.Patch.KernelParams.Syslog),
+		// CaptainOS passes tinkerbell_<flag> parameters to the Tink Agent as
+		// the named flag.
+		fmt.Sprintf("tinkerbell_grpc_server=%s", h.Patch.KernelParams.TinkServerGRPCAddr),
+		fmt.Sprintf("tinkerbell_grpc_tls=%v", h.Patch.KernelParams.TinkServerTLS),
+		fmt.Sprintf("tinkerbell_id=%s", mac),
 	}
-	all = append(all, hwAddr, syslogHost, grpcAuthority, tinkerbellTLS, workerID)
+	// Extra parameters follow, so they can override these.
 	all = append(all, h.Patch.KernelParams.ExtraParams...)
 	if h.Patch.StaticIPAMEnabled && parseIPAM(d) != "" {
 		all = append(all, parseIPAM(d))

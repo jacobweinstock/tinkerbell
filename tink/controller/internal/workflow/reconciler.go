@@ -91,7 +91,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	defer func() {
 		logger.V(1).Info("Reconcile code flow journal", "journal", journal.Journal(ctx))
 	}()
-	logger.Info("Reconcile")
+	// logger.Info("Reconcile")
 	journal.Log(ctx, "starting reconcile")
 
 	stored := &v1alpha1.Workflow{}
@@ -144,6 +144,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 			wflow.Status.State = v1alpha1.WorkflowStateTimeout
 			return reconcile.Result{}, mergePatchStatus(ctx, r.client, stored, wflow)
 		}
+		// The Tink Server sets the execution deadline when it grants the first
+		// WireGuard session, before any Action starts.
+		if wflow.Status.GlobalExecutionStart != nil && wflow.Status.GlobalExecutionStop != nil {
+			if updateAgentIDIfNeeded(wflow) {
+				journal.Log(ctx, "updated workflow AgentID for task transition", "newAgentID", wflow.Status.AgentID)
+			}
+			return reconcile.Result{RequeueAfter: time.Until(wflow.Status.GlobalExecutionStop.Time)}, mergePatchStatus(ctx, r.client, stored, wflow)
+		}
 
 		// Update AgentID if transitioning between tasks
 		if updateAgentIDIfNeeded(wflow) {
@@ -178,7 +186,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		rc, err := s.postActions(ctx)
 
 		return rc, errors.Join(err, mergePatchStatus(ctx, r.client, stored, wflow))
-	case v1alpha1.WorkflowStatePending, v1alpha1.WorkflowStateTimeout, v1alpha1.WorkflowStateFailed, v1alpha1.WorkflowStateSuccess:
+	case v1alpha1.WorkflowStatePending:
+		// A WireGuard session grant starts the execution clock while the Workflow is
+		// still PENDING, and the Workflow times out at its deadline even if no Action
+		// has started.
+		if wflow.Status.GlobalExecutionStart != nil && wflow.Status.GlobalExecutionStop != nil {
+			if !r.nowFunc().Before(wflow.Status.GlobalExecutionStop.Time) {
+				journal.Log(ctx, "execution deadline reached")
+				wflow.Status.State = v1alpha1.WorkflowStateTimeout
+				return reconcile.Result{}, mergePatchStatus(ctx, r.client, stored, wflow)
+			}
+			return reconcile.Result{RequeueAfter: time.Until(wflow.Status.GlobalExecutionStop.Time)}, nil
+		}
+		journal.Log(ctx, "controller will not trigger another reconcile", "state", wflow.Status.State)
+
+		return reconcile.Result{}, nil
+	case v1alpha1.WorkflowStateTimeout, v1alpha1.WorkflowStateFailed, v1alpha1.WorkflowStateSuccess:
 		journal.Log(ctx, "controller will not trigger another reconcile", "state", wflow.Status.State)
 
 		return reconcile.Result{}, nil

@@ -1,0 +1,131 @@
+edition = "2023";
+
+package proto;
+
+option go_package = "github.com/tinkerbell/tinkerbell/pkg/proto";
+
+import "google/protobuf/timestamp.proto";
+import "get_action_request.proto";
+
+/*
+ * AgentService is served inside the bootstrap WireGuard tunnel. An Agent
+ * registers to learn whether a Workflow has work for it and, if so, to be
+ * granted a session: a WireGuard key that reaches the WorkflowService for that
+ * one Workflow. See docs/technical/designs/AGENT_WIREGUARD_AUTHN.md.
+ */
+service AgentService {
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+}
+
+/*
+ * RegisterRequest does not carry the caller's bootstrap key: the server takes
+ * it from the tunnel, so a caller can only register the key it holds.
+ */
+message RegisterRequest {
+  string agent_id = 1;
+  /* Used for auto discovery and auto enrollment. */
+  AgentAttributes agent_attributes = 2;
+  /* What the Agent can prove beyond its WireGuard key, which the tunnel already proves. */
+  Evidence evidence = 3;
+  /* Answers the challenge in the previous RegisterResponse. */
+  ChallengeResponse challenge_response = 4;
+}
+
+/*
+ * Evidence is what an Agent presents beyond its WireGuard key, named after
+ * the credential type it proves. The server ignores evidence for any credential
+ * type other than the Agent's.
+ */
+message Evidence {
+  /* "tpm" */
+  string type = 1;
+  /* A serialized TPMEvidence for "tpm". */
+  bytes payload = 2;
+}
+
+/* TPMEvidence identifies an Agent's TPM. */
+message TPMEvidence {
+  /* The endorsement key's public key, PKIX DER. */
+  bytes ek_public = 1;
+  /* The endorsement key's certificate, DER, when the TPM has one. */
+  bytes ek_certificate = 2;
+  /* The attestation key's TPM2B_PUBLIC. */
+  bytes ak_public = 3;
+}
+
+/* Challenge must be answered in the next Register. */
+message Challenge {
+  /* A serialized TPMChallenge for "tpm". */
+  bytes payload = 1;
+  /* Opaque to the Agent; returned unchanged in the ChallengeResponse. */
+  bytes ticket = 2;
+}
+
+/* TPMChallenge is TPM2_MakeCredential's output for the Agent's TPM. */
+message TPMChallenge {
+  /* TPM2B_ID_OBJECT */
+  bytes credential_blob = 1;
+  /* TPM2B_ENCRYPTED_SECRET */
+  bytes encrypted_secret = 2;
+}
+
+message ChallengeResponse {
+  /* For "tpm", the secret TPM2_ActivateCredential recovered. */
+  bytes payload = 1;
+  bytes ticket = 2;
+}
+
+message RegisterResponse {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    /* No Workflow has work for this Agent yet. Poll again later. */
+    STATE_WAITING = 1;
+    /* A session was granted. */
+    STATE_GRANTED = 2;
+    /* Answer challenge in the next Register. */
+    STATE_CHALLENGE = 3;
+  }
+  State state = 1;
+  /* Set when GRANTED. */
+  Session session = 2;
+  /*
+   * Why there is no work, when the server can tell: for example, the Workflow
+   * this key last had a session in has ended. Informational, for the Agent's logs.
+   */
+  string reason = 3;
+  /*
+   * Set when the Agent registered with the previous bootstrap key: the
+   * current bootstrap server to register with from now on. It arrives over
+   * the old tunnel, which is authenticated.
+   */
+  BootstrapServer move_to = 4;
+  /* Set when CHALLENGE. */
+  Challenge challenge = 5;
+}
+
+/* BootstrapServer is a bootstrap device an Agent registers with. */
+message BootstrapServer {
+  bytes public_key = 1;
+  /* UDP ip:port */
+  string endpoint = 2;
+}
+
+/*
+ * Session is a WireGuard key for one Agent in one Workflow. The server
+ * generates it, returns the private key once, and keeps only the public key.
+ */
+message Session {
+  /* namespace/name */
+  string workflow = 1;
+  bytes private_key = 2;
+  bytes preshared_key = 3;
+  /* The Agent's session tunnel address. */
+  string address = 4;
+  bytes server_public_key = 5;
+  /* The session device's UDP ip:port. */
+  string server_endpoint = 6;
+  /* An upper bound: the session may be revoked earlier. */
+  google.protobuf.Timestamp expires_at = 7;
+  /* The server's address inside the session tunnel. */
+  string server_address = 8;
+}

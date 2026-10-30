@@ -145,10 +145,10 @@ The following CLI flags and environment variables control the DNS name used in s
 | ---- | -------------------- | ----------- | ------- | ------- |
 | `--dhcp-ipxe-http-script-host-v4` | `TINKERBELL_DHCP_IPXE_HTTP_SCRIPT_HOST_V4` | DNS name in DHCP for iPXE scripts | "" | "tinkerbell.example.com" |
 | `--dhcp-ipxe-http-binary-host-v4` | `TINKERBELL_DHCP_IPXE_HTTP_BINARY_HOST_V4` | DNS name in DHCP for iPXE binaries | "" | "tinkerbell.example.com" |
-| `--ipxe-http-script-extra-kernel-args-v4` | `TINKERBELL_IPXE_HTTP_SCRIPT_EXTRA_KERNEL_ARGS_V4` | Extra kernel arguments for iPXE scripts | "" | "tink_worker_image=ghcr.io/tinkerbell/tink-agent:latest grpc_authority=tinkerbell.example.com:42113" |
+| `--ipxe-http-script-extra-kernel-args-v4` | `TINKERBELL_IPXE_HTTP_SCRIPT_EXTRA_KERNEL_ARGS_V4` | Extra kernel arguments for iPXE scripts | "" | "tink_worker_image=ghcr.io/tinkerbell/tink-agent:latest tinkerbell_grpc_server=tinkerbell.example.com:42113" |
 
 > [!NOTE]
-> The `grpc_authority` parameter tells the Tink Agent which hostname and port to use when connecting to the Tink Server. This must match the hostname in your TLS certificate.
+> The `tinkerbell_grpc_server` parameter tells the Tink Agent which hostname and port to use when connecting to the Tink Server. This must match the hostname in your TLS certificate.
 
 ## Using TLS with iPXE
 

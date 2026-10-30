@@ -35,6 +35,14 @@
 {{- $syslogPortV6 := default $syslogPort .Values.deployment.envs.smee.syslogBindPortV6 }}
 {{- $tftpPort := .Values.deployment.envs.smee.tftpServerBindPort }}
 {{- $tftpPortV6 := default $tftpPort .Values.deployment.envs.smee.tftpServerBindPortV6 }}
+{{- $wg := .Values.deployment.envs.wireguard }}
+{{- $wgEnabled := and .Values.deployment.envs.globals.enableTinkServer (ne $wg.mode "disabled") }}
+{{- if and $wgEnabled (eq $wg.agentAuthenticationPolicy "pinned") (ne $wg.mode "required") }}
+  {{- fail "deployment.envs.wireguard.agentAuthenticationPolicy pinned requires deployment.envs.wireguard.mode required" }}
+{{- end }}
+{{- $wgBootPortV6 := default $wg.bootstrapPort $wg.bootstrapPortV6 }}
+{{- $wgSessPortV6 := default $wg.sessionPort $wg.sessionPortV6 }}
+{{- $wgPrevPortV6 := default $wg.previousBootstrapPort $wg.previousBootstrapPortV6 }}
 {{- if and .Values.service.enabled (include "tinkerbell.servesIPv4" .) (include "tinkerbell.servesIPv6" .) }}
 {{- /* Only ports that reach a Service can collide on its single targetPort, so
        the set follows the listeners the pod actually exposes. */}}
@@ -51,6 +59,13 @@
 {{- if .Values.deployment.envs.globals.enableSmee }}
 {{- $pairs = append $pairs (dict "name" "smee.syslogBindPortV6" "peer" "smee.syslogBindPort" "v4" $syslogPort "v6" $syslogPortV6) }}
 {{- $pairs = append $pairs (dict "name" "smee.tftpServerBindPortV6" "peer" "smee.tftpServerBindPort" "v4" $tftpPort "v6" $tftpPortV6) }}
+{{- end }}
+{{- if $wgEnabled }}
+{{- $pairs = append $pairs (dict "name" "wireguard.bootstrapPortV6" "peer" "wireguard.bootstrapPort" "v4" $wg.bootstrapPort "v6" $wgBootPortV6) }}
+{{- $pairs = append $pairs (dict "name" "wireguard.sessionPortV6" "peer" "wireguard.sessionPort" "v4" $wg.sessionPort "v6" $wgSessPortV6) }}
+{{- if $wg.previousBootstrapPort }}
+{{- $pairs = append $pairs (dict "name" "wireguard.previousBootstrapPortV6" "peer" "wireguard.previousBootstrapPort" "v4" $wg.previousBootstrapPort "v6" $wgPrevPortV6) }}
+{{- end }}
 {{- end }}
 {{- range $pair := $pairs }}
 {{- if ne (toString $pair.v6) (toString $pair.v4) }}
@@ -185,6 +200,45 @@ spec:
               value: {{ coalesce .Values.deployment.envs.tinkServer.autoDiscoveryNamespace (include "tinkerbell.primaryNamespace" .) | quote }}
             - name: TINKERBELL_TINK_SERVER_AUTO_DISCOVERY_AUTO_ENROLLMENT_ENABLED
               value: {{ .Values.deployment.envs.tinkServer.autoDiscoveryAutoEnrollmentEnabled | quote }}
+          # WIREGUARD
+            - name: TINKERBELL_WIREGUARD_MODE
+              value: {{ .Values.deployment.envs.wireguard.mode | quote }}
+            - name: TINKERBELL_AGENT_AUTHENTICATION_POLICY
+              value: {{ $wg.agentAuthenticationPolicy | quote }}
+            - name: TINKERBELL_WIREGUARD_BIND_ADDR_V4
+              value: {{ $wg.bindAddr | quote }}
+            - name: TINKERBELL_WIREGUARD_BIND_ADDR_V6
+              value: {{ $wg.bindAddrV6 | quote }}
+            - name: TINKERBELL_WIREGUARD_BOOTSTRAP_PORT_V4
+              value: {{ $wg.bootstrapPort | quote }}
+            - name: TINKERBELL_WIREGUARD_BOOTSTRAP_PORT_V6
+              value: {{ $wgBootPortV6 | quote }}
+            - name: TINKERBELL_WIREGUARD_SESSION_PORT_V4
+              value: {{ $wg.sessionPort | quote }}
+            - name: TINKERBELL_WIREGUARD_SESSION_PORT_V6
+              value: {{ $wgSessPortV6 | quote }}
+            {{- if ne .Values.deployment.envs.wireguard.mode "disabled" }}
+            - name: TINKERBELL_WIREGUARD_PREFIX
+              value: {{ required "deployment.envs.wireguard.prefix is required when WireGuard is enabled" .Values.deployment.envs.wireguard.prefix | quote }}
+            - name: TINKERBELL_WIREGUARD_BOOTSTRAP_KEY_FILE
+              value: /etc/tinkerbell/wireguard/bootstrap.key
+            - name: TINKERBELL_WIREGUARD_SESSION_KEY_FILE
+              value: /etc/tinkerbell/wireguard/session.key
+            - name: TINKERBELL_WIREGUARD_PSK_ROOT_FILE
+              value: /etc/tinkerbell/wireguard/psk-root
+            {{- if .Values.deployment.envs.wireguard.previousBootstrapPort }}
+            - name: TINKERBELL_WIREGUARD_PREVIOUS_BOOTSTRAP_KEY_FILE
+              value: /etc/tinkerbell/wireguard/previous-bootstrap.key
+            - name: TINKERBELL_WIREGUARD_PREVIOUS_BOOTSTRAP_PORT_V4
+              value: {{ $wg.previousBootstrapPort | quote }}
+            - name: TINKERBELL_WIREGUARD_PREVIOUS_BOOTSTRAP_PORT_V6
+              value: {{ $wgPrevPortV6 | quote }}
+            {{- end }}
+            {{- end }}
+            - name: TINKERBELL_WIREGUARD_BINDING_SOURCE_CHECK
+              value: {{ .Values.deployment.envs.wireguard.bindingSourceCheck | quote }}
+            - name: TINKERBELL_WIREGUARD_LOG_LEVEL
+              value: {{ .Values.deployment.envs.wireguard.logLevel | quote }}
           # TOOTLES
             - name: TINKERBELL_TOOTLES_DEBUG_MODE
               value: {{ .Values.deployment.envs.tootles.debugMode | quote }}
@@ -491,6 +545,13 @@ spec:
               protocol: {{ .protocol }}
             {{- end }}
           {{- end }}
+          {{- if and .Values.deployment.envs.globals.enableTinkServer (ne .Values.deployment.envs.wireguard.mode "disabled") }}
+          {{- range $i, $port := include "tinkerbell.wireguardPorts" . | fromJsonArray }}
+            - containerPort: {{ $port.port }}
+              name: {{ $port.name }}
+              protocol: UDP
+          {{- end }}
+          {{- end }}
           {{- if .Values.deployment.envs.globals.enableSecondstar }}
             - containerPort: {{ include "tinkerbell.servedPort" (dict "v4" $sshPort "v6" $sshPortV6 "ctx" $) }}
             {{- with .Values.service.ports.ssh }}
@@ -510,9 +571,17 @@ spec:
             capabilities:
               add:
                 - NET_RAW
-          {{- with .Values.deployment.volumeMounts }}
+          {{- $wireguard := ne .Values.deployment.envs.wireguard.mode "disabled" }}
+          {{- if or .Values.deployment.volumeMounts $wireguard }}
           volumeMounts:
+          {{- with .Values.deployment.volumeMounts }}
           {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- if $wireguard }}
+          - name: wireguard-keys
+            mountPath: /etc/tinkerbell/wireguard
+            readOnly: true
+          {{- end }}
           {{- end }}
       hostNetwork: {{ .Values.deployment.hostNetwork }}
       serviceAccountName: {{ .Values.rbac.name }}-service-account
@@ -525,6 +594,12 @@ spec:
       {{- end }}
       {{- with  .Values.deployment.volumes }}
       {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- if ne .Values.deployment.envs.wireguard.mode "disabled" }}
+      - name: wireguard-keys
+        secret:
+          secretName: {{ required "deployment.envs.wireguard.secretName is required when WireGuard is enabled" .Values.deployment.envs.wireguard.secretName }}
+          defaultMode: 0400
       {{- end }}
       {{- with .Values.deployment.nodeSelector }}
       nodeSelector:

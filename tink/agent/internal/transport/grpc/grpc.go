@@ -30,10 +30,19 @@ type Config struct {
 	AgentID          string
 	Actions          chan spec.Action
 	Attributes       *data.AgentAttributes
+	// Timeout bounds each call. Zero means requestTimeout.
+	Timeout time.Duration
+}
+
+func (c *Config) timeout() time.Duration {
+	if c.Timeout > 0 {
+		return c.Timeout
+	}
+	return requestTimeout
 }
 
 func (c *Config) Read(ctx context.Context) (spec.Action, error) {
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.timeout())
 	defer cancel()
 	response, err := c.TinkServerClient.GetAction(ctx, &proto.ActionRequest{AgentId: toPtr(c.AgentID), AgentAttributes: ToProto(c.Attributes)})
 	if err != nil {
@@ -115,7 +124,7 @@ func (c *Config) Write(ctx context.Context, event spec.Event) error {
 		ExecutionDuration: toPtr(event.Action.ExecutionDuration),
 		Message:           &proto.ActionMessage{Message: toPtr(event.Message)},
 	}
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.timeout())
 	defer cancel()
 	if _, err := c.TinkServerClient.ReportActionStatus(ctx, ar); err != nil {
 		return writeError(err)

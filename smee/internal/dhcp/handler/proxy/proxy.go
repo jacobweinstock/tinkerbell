@@ -217,7 +217,7 @@ func (h *Handler) Handle(ctx context.Context, conn *ipv4.PacketConn, dp dhcp.Pac
 			return
 		}
 		if err != nil {
-			log.Info("Failed to convert hardware data, proceeding with defaults", "error", err.Error())
+			log.V(1).Info("Failed to convert hardware data, proceeding with defaults", "error", err.Error())
 			hw = dhcp.Hardware{}
 		}
 	}

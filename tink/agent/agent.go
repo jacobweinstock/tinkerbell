@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -12,6 +13,7 @@ import (
 	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"github.com/tinkerbell/tinkerbell/pkg/proto"
+	"github.com/tinkerbell/tinkerbell/pkg/wireguard"
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/attribute"
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/runtime/containerd"
 	"github.com/tinkerbell/tinkerbell/tink/agent/internal/runtime/docker"
@@ -131,7 +133,7 @@ func (c *Config) Run(ctx context.Context, log logr.Logger) {
 				return
 			}
 			d := rt.next(err)
-			log.Info("action report rejected, returning to polling", "error", err, "retryIn", d.String())
+			log.Info("unable to report action, returning to polling", "error", err, "retryIn", d.String())
 			if !sleep(ctx, d) {
 				return
 			}
@@ -219,6 +221,17 @@ type Registry struct {
 	Pass string
 }
 
+// MarshalJSON encodes r with a non-empty Pass replaced by "redacted", so that
+// logging the Agent configuration does not expose the registry password.
+func (r Registry) MarshalJSON() ([]byte, error) {
+	// plain has Registry's fields but not this method, which avoids recursion.
+	type plain Registry
+	if r.Pass != "" {
+		r.Pass = "redacted"
+	}
+	return json.Marshal(plain(r))
+}
+
 type Proxy struct {
 	HTTPProxy  []string
 	HTTPSProxy []string
@@ -229,7 +242,27 @@ type GRPCTransport struct {
 	ServerAddrPort string
 	TLSEnabled     bool
 	TLSInsecure    bool
+	WireGuard      WireGuard
 }
+
+// WireGuard configures WireGuard authentication. When the server public key,
+// endpoint, and prefix are all set, the gRPC transport reaches the Tink Server
+// only through WireGuard tunnels and ServerAddrPort is ignored.
+type WireGuard struct {
+	// KeyFile holds the bootstrap private key, generated if missing.
+	KeyFile string
+	// TPM sends TPM evidence, for Hardware that pins the Agent's TPM.
+	TPM             bool
+	ServerPublicKey string
+	ServerEndpoint  string
+	Prefix          string
+}
+
+// Enabled reports whether all the server parameters are set.
+func (w WireGuard) Enabled() bool {
+	return w.ServerPublicKey != "" && w.ServerEndpoint != "" && w.Prefix != ""
+}
+
 type FileTransport struct {
 	WorkflowPath string
 }
@@ -292,22 +325,36 @@ func (o *Options) ConfigureAndRun(inctx context.Context, log logr.Logger, id str
 		tr = readWriter
 		tw = readWriter
 	default:
-		conn, err := grpc.NewClientConn(o.Transport.GRPC.ServerAddrPort, o.Transport.GRPC.TLSEnabled, o.Transport.GRPC.TLSInsecure)
+		if !o.Transport.GRPC.WireGuard.Enabled() {
+			conn, err := grpc.NewClientConn(o.Transport.GRPC.ServerAddrPort, o.Transport.GRPC.TLSEnabled, o.Transport.GRPC.TLSInsecure)
+			if err != nil {
+				return fmt.Errorf("unable to create gRPC client: %w", err)
+			}
+			readWriter := &grpc.Config{
+				Log:              log,
+				TinkServerClient: proto.NewWorkflowServiceClient(conn),
+				AgentID:          id,
+				Actions:          make(chan spec.Action),
+			}
+			if o.AttributeDetectionEnabled {
+				readWriter.Attributes = attribute.DiscoverAll(inctx, log, o.LLDPTimeout)
+			}
+			log.Info("starting gRPC transport", "server", o.Transport.GRPC.ServerAddrPort, "attributes", readWriter.Attributes)
+			tr = readWriter
+			tw = readWriter
+			break
+		}
+		wg, err := o.wireGuardTransport(inctx, log, id)
 		if err != nil {
-			return fmt.Errorf("unable to create gRPC client: %w", err)
+			return err
 		}
-		readWriter := &grpc.Config{
-			Log:              log,
-			TinkServerClient: proto.NewWorkflowServiceClient(conn),
-			AgentID:          id,
-			Actions:          make(chan spec.Action),
+		startTransport = func(ctx context.Context) error { //nolint:unparam // matches the other transports' Start
+			<-ctx.Done()
+			wg.Close()
+			return nil
 		}
-		if o.AttributeDetectionEnabled {
-			readWriter.Attributes = attribute.DiscoverAll(inctx, log, o.LLDPTimeout)
-		}
-		log.Info("starting gRPC transport", "server", o.Transport.GRPC.ServerAddrPort, "attributes", readWriter.Attributes)
-		tr = readWriter
-		tw = readWriter
+		tr = wg
+		tw = wg
 	}
 
 	var re RuntimeExecutor
@@ -467,4 +514,37 @@ func humanDuration(d time.Duration, precision int) string {
 
 	// Join all parts with spaces
 	return strings.Join(parts, "")
+}
+
+// wireGuardTransport builds the gRPC transport that authenticates with WireGuard.
+func (o *Options) wireGuardTransport(ctx context.Context, log logr.Logger, id string) (*grpc.WireGuard, error) {
+	c := o.Transport.GRPC.WireGuard
+	pub, err := wireguard.ParseKey(c.ServerPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid WireGuard server public key: %w", err)
+	}
+	ep, err := netip.ParseAddrPort(c.ServerEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid WireGuard server endpoint: %w", err)
+	}
+	prefix, err := wireguard.ParsePrefix(c.Prefix)
+	if err != nil {
+		return nil, fmt.Errorf("invalid WireGuard prefix: %w", err)
+	}
+	wg := &grpc.WireGuard{
+		Log:     log.WithName("wireguard"),
+		AgentID: id,
+		KeyFile: c.KeyFile,
+		TPM:     c.TPM,
+		Server:  grpc.WireGuardServer{PublicKey: pub, Endpoint: ep},
+		Prefix:  prefix,
+	}
+	if err := wg.Init(); err != nil {
+		return nil, fmt.Errorf("unable to load the WireGuard key: %w", err)
+	}
+	if o.AttributeDetectionEnabled {
+		wg.Attributes = attribute.DiscoverAll(ctx, log, o.LLDPTimeout)
+	}
+	log.Info("starting gRPC transport through WireGuard", "server", ep, "attributes", wg.Attributes)
+	return wg, nil
 }

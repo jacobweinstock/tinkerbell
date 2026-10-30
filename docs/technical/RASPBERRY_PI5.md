@@ -218,13 +218,12 @@ spec:
           kernelParams:
             - console=tty1
             - console=ttyAMA10,115200
-            - grpc_authority=192.168.2.50:42113
-            - tinkerbell_tls=false
-            - tinkerbell_insecure_tls=true
+            - tinkerbell_grpc_server=192.168.2.50:42113
+            - tinkerbell_grpc_tls=false
+            - tinkerbell_grpc_insecure_tls=true
             - syslog_host=192.168.2.50
             - facility=onprem
-            - worker_id=dc:a6:32:4b:2c:1a
-            - hw_addr=dc:a6:32:4b:2c:1a
+            - tinkerbell_id=dc:a6:32:4b:2c:1a
             - tink_worker_image=ghcr.io/tinkerbell/tink-agent:latest
 ```
 
@@ -244,8 +243,8 @@ How the netboot fields map to TFTP requests:
 > them touches the disk. The symptom is `hardware does not have RPI data; skipping` at `-v 1`
 > followed by a 404 for `config.txt`.
 
-`worker_id` is what `tink-agent` reports to the Tink server, and it must match the
-`spec.hardwareMap` value in the Workflow you later create. `grpc_authority` and `syslog_host` point
+`tinkerbell_id` is what `tink-agent` reports to the Tink server, and it must match the
+`spec.hardwareMap` value in the Workflow you later create. `tinkerbell_grpc_server` and `syslog_host` point
 at your Tinkerbell IP.
 
 ## 4. Configure the Pi's EEPROM
